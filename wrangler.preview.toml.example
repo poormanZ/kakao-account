@@ -1,0 +1,16 @@
+name = "kakao-account-api-preview"
+main = "src/index.ts"
+compatibility_date = "2026-09-05"
+
+# Preview must use a dedicated D1 database.
+# The actual database ID is injected by the GitHub Actions preview workflow.
+[[d1_databases]]
+binding = "DB"
+database_name = "kakao-account-db-preview"
+database_id = "REPLACE_WITH_PREVIEW_D1_DATABASE_ID"
+migrations_dir = "migrations"
+
+[vars]
+# Replace these values in the generated preview config before deployment.
+APP_BASE_URL = "https://REPLACE_WITH_PREVIEW_WORKER_URL"
+KAKAO_REDIRECT_URI = "https://REPLACE_WITH_PREVIEW_WORKER_URL/auth/kakao/callback"
