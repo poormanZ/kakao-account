@@ -9,6 +9,8 @@ export interface Env {
 const SESSION_COOKIE = "kakao_account_session";
 const STATE_COOKIE = "kakao_oauth_state";
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
+const MAX_SETTING_KEY_LENGTH = 100;
+const MAX_SETTING_VALUE_LENGTH = 10_000;
 
 const json = (data: unknown, init: ResponseInit = {}) =>
   Response.json(data, {
@@ -53,6 +55,7 @@ interface UserRow {
   profile_image_url: string | null;
 }
 interface SessionUserRow extends UserRow { expires_at: string; }
+interface SettingRow { setting_key: string; setting_value: string; }
 
 const kakaoError = (headers: Headers) =>
   json({ error: "Kakao authentication failed" }, { status: 502, headers });
@@ -102,6 +105,43 @@ const getSessionUser = async (db: D1Database, sessionId: string): Promise<Sessio
   await db.prepare("UPDATE sessions SET last_seen_at = CURRENT_TIMESTAMP WHERE id = ?")
     .bind(sessionHash).run();
   return session;
+};
+
+const getAuthenticatedUser = async (request: Request, env: Env): Promise<UserRow | null> => {
+  const sessionId = getCookie(request, SESSION_COOKIE);
+  if (!sessionId) return null;
+  const sessionUser = await getSessionUser(env.DB, sessionId);
+  if (!sessionUser) return null;
+  return {
+    id: sessionUser.id,
+    nickname: sessionUser.nickname,
+    profile_image_url: sessionUser.profile_image_url,
+  };
+};
+
+const parseSettingKey = (pathname: string): string | null => {
+  const match = pathname.match(/^\/api\/settings\/([^/]+)$/);
+  if (!match) return null;
+  let key: string;
+  try {
+    key = decodeURIComponent(match[1]);
+  } catch {
+    return null;
+  }
+  if (!key || key.length > MAX_SETTING_KEY_LENGTH || !/^[A-Za-z0-9._-]+$/.test(key)) return null;
+  return key;
+};
+
+const parseJsonBody = async (request: Request): Promise<Record<string, unknown> | null> => {
+  const contentType = request.headers.get("Content-Type")?.split(";", 1)[0].trim().toLowerCase();
+  if (contentType !== "application/json") return null;
+  try {
+    const body = await request.json();
+    if (!body || typeof body !== "object" || Array.isArray(body)) return null;
+    return body as Record<string, unknown>;
+  } catch {
+    return null;
+  }
 };
 
 export default {
@@ -204,6 +244,70 @@ export default {
       } catch {
         return json({ error: "Authentication service unavailable" }, { status: 503 });
       }
+    }
+
+    if (url.pathname === "/api/settings" || url.pathname.startsWith("/api/settings/")) {
+      let user: UserRow | null;
+      try {
+        user = await getAuthenticatedUser(request, env);
+      } catch {
+        return json({ error: "Authentication service unavailable" }, { status: 503 });
+      }
+      if (!user) return json({ error: "Unauthorized" }, { status: 401 });
+
+      if (request.method === "GET" && url.pathname === "/api/settings") {
+        try {
+          const result = await env.DB.prepare(
+            `SELECT setting_key, setting_value FROM user_settings
+             WHERE user_id = ? ORDER BY setting_key`,
+          ).bind(user.id).all<SettingRow>();
+          const settings: Record<string, string> = {};
+          for (const row of result.results) settings[row.setting_key] = row.setting_value;
+          return json({ settings });
+        } catch {
+          return json({ error: "Settings service unavailable" }, { status: 503 });
+        }
+      }
+
+      const key = parseSettingKey(url.pathname);
+      if (!key) return json({ error: "Invalid setting key" }, { status: 400 });
+
+      if (request.method === "PUT") {
+        const body = await parseJsonBody(request);
+        if (!body || typeof body.value !== "string") {
+          return json({ error: "Request body must contain a string value" }, { status: 400 });
+        }
+        if (body.value.length > MAX_SETTING_VALUE_LENGTH) {
+          return json({ error: "Setting value is too long" }, { status: 400 });
+        }
+
+        try {
+          await env.DB.prepare(
+            `INSERT INTO user_settings (user_id, setting_key, setting_value, updated_at)
+             VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+             ON CONFLICT(user_id, setting_key) DO UPDATE SET
+               setting_value = excluded.setting_value,
+               updated_at = CURRENT_TIMESTAMP`,
+          ).bind(user.id, key, body.value).run();
+          return json({ setting: { key, value: body.value } });
+        } catch {
+          return json({ error: "Settings service unavailable" }, { status: 503 });
+        }
+      }
+
+      if (request.method === "DELETE") {
+        try {
+          const result = await env.DB.prepare(
+            "DELETE FROM user_settings WHERE user_id = ? AND setting_key = ?",
+          ).bind(user.id, key).run();
+          if (!result.meta.changes) return json({ error: "Setting not found" }, { status: 404 });
+          return json({ deleted: true, key });
+        } catch {
+          return json({ error: "Settings service unavailable" }, { status: 503 });
+        }
+      }
+
+      return json({ error: "Method Not Allowed" }, { status: 405, headers: { Allow: "GET, PUT, DELETE" } });
     }
 
     if (request.method === "POST" && url.pathname === "/auth/logout") {
