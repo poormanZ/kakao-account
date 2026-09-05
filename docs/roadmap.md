@@ -57,11 +57,11 @@
 - [x] 배포 전 secret/환경 확인
 
 ## Phase 7 — 운영
-- [ ] Worker/D1 사용량 모니터링
+- [x] Worker/D1 사용량 모니터링 — Cloudflare Metrics + Billing 알림 + 운영 점검 주기 문서화
 - [x] 오류 로깅/알림 — 구조화 JSON 로그 + request ID + 민감정보 비노출
 - [x] 세션 정리 작업 — 만료 세션 hourly Cron + D1 cleanup
 - [x] 개인정보 보관/삭제 정책 — 최소 보관 + 인증된 사용자 계정 삭제 API
-- [ ] 무료 한도 초과 대응 계획
+- [x] 무료 한도 초과 대응 계획 — Worker/D1 Free 한도 및 70/90% 대응 기준 문서화
 
 ## 완료 기준
 각 Phase는 구현뿐 아니라 관련 테스트와 문서가 함께 갱신되고, `main`에서 정상 동작을 확인한 뒤 완료로 표시한다.
