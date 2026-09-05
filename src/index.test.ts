@@ -279,4 +279,18 @@ describe("account authentication APIs", () => {
     expect(response.status).toBe(405);
     expect(response.headers.get("Allow")).toBe("GET, PUT, DELETE");
   });
+
+  it("cleans up expired sessions from the scheduled handler", async () => {
+    const run = vi.fn(async () => ({ meta: { changes: 2 } }));
+    const db = {
+      prepare(sql: string) {
+        expect(sql).toBe("DELETE FROM sessions WHERE expires_at <= CURRENT_TIMESTAMP");
+        return { run };
+      },
+    } as unknown as D1Database;
+
+    await worker.scheduled({} as ScheduledController, env(db));
+
+    expect(run).toHaveBeenCalledTimes(1);
+  });
 });
