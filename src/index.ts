@@ -1,5 +1,5 @@
 import { getAuthenticatedUser, getCookie, getSessionUser, hashSessionId, type AuthUser } from "./auth";
-import { logError, logWarn } from "./logger";
+import { logError, logInfo, logWarn } from "./logger";
 
 export interface Env {
   DB: D1Database;
@@ -15,7 +15,7 @@ const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
 const MAX_SETTING_KEY_LENGTH = 100;
 const MAX_SETTING_VALUE_LENGTH = 10_000;
 
-export type UserRow = AuthUser;
+type UserRow = AuthUser;
 
 const securityHeaders = (secure: boolean): Record<string, string> => ({
   "Cache-Control": "no-store",
@@ -150,22 +150,13 @@ const worker = {
 
     if (request.method === "GET" && url.pathname === "/auth/kakao") {
       if (!env.KAKAO_REST_API_KEY) return json({ error: "Kakao login is not configured" }, { status: 503 }, secure);
-
       const state = randomHex(32);
       const authorizeUrl = new URL("https://kauth.kakao.com/oauth/authorize");
       authorizeUrl.searchParams.set("client_id", env.KAKAO_REST_API_KEY);
       authorizeUrl.searchParams.set("redirect_uri", env.KAKAO_REDIRECT_URI);
       authorizeUrl.searchParams.set("response_type", "code");
       authorizeUrl.searchParams.set("state", state);
-
-      return new Response(null, {
-        status: 302,
-        headers: {
-          ...securityHeaders(secure),
-          Location: authorizeUrl.toString(),
-          "Set-Cookie": stateCookie(state, secure),
-        },
-      });
+      return new Response(null, { status: 302, headers: { ...securityHeaders(secure), Location: authorizeUrl.toString(), "Set-Cookie": stateCookie(state, secure) } });
     }
 
     if (request.method === "GET" && url.pathname === "/auth/kakao/callback") {
@@ -175,44 +166,23 @@ const worker = {
       const error = url.searchParams.get("error");
       const headers = new Headers(securityHeaders(secure));
       headers.append("Set-Cookie", clearCookie(STATE_COOKIE, secure));
-
       if (error === "access_denied") return json({ error: "Kakao login was cancelled" }, { status: 400, headers }, secure);
-      if (!code || !returnedState || !savedState || returnedState !== savedState) {
-        return json({ error: "Invalid OAuth state or authorization code" }, { status: 400, headers }, secure);
-      }
+      if (!code || !returnedState || !savedState || returnedState !== savedState) return json({ error: "Invalid OAuth state or authorization code" }, { status: 400, headers }, secure);
       if (!env.KAKAO_REST_API_KEY) return json({ error: "Kakao login is not configured" }, { status: 503, headers }, secure);
-
       try {
-        const tokenBody = new URLSearchParams({
-          grant_type: "authorization_code",
-          client_id: env.KAKAO_REST_API_KEY,
-          redirect_uri: env.KAKAO_REDIRECT_URI,
-          code,
-        });
+        const tokenBody = new URLSearchParams({ grant_type: "authorization_code", client_id: env.KAKAO_REST_API_KEY, redirect_uri: env.KAKAO_REDIRECT_URI, code });
         if (env.KAKAO_CLIENT_SECRET) tokenBody.set("client_secret", env.KAKAO_CLIENT_SECRET);
-
-        const tokenResponse = await fetch("https://kauth.kakao.com/oauth/token", {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded;charset=utf-8" },
-          body: tokenBody,
-        });
+        const tokenResponse = await fetch("https://kauth.kakao.com/oauth/token", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded;charset=utf-8" }, body: tokenBody });
         if (!tokenResponse.ok) return kakaoError(headers, secure, requestId, "token", tokenResponse.status);
-
         const token = await tokenResponse.json() as KakaoTokenResponse;
         if (!token.access_token) return kakaoError(headers, secure, requestId, "token_response");
-
-        const userResponse = await fetch("https://kapi.kakao.com/v2/user/me", {
-          headers: { Authorization: `Bearer ${token.access_token}` },
-        });
+        const userResponse = await fetch("https://kapi.kakao.com/v2/user/me", { headers: { Authorization: `Bearer ${token.access_token}` } });
         if (!userResponse.ok) return kakaoError(headers, secure, requestId, "user_info", userResponse.status);
-
         const kakaoUser = await userResponse.json() as KakaoUserResponse;
         if (typeof kakaoUser.id !== "number") return kakaoError(headers, secure, requestId, "user_response");
-
         const user = await getOrCreateUser(env.DB, String(kakaoUser.id));
         const sessionId = await createSession(env.DB, user.id);
         headers.append("Set-Cookie", sessionCookie(sessionId, secure));
-
         return json({ authenticated: true, provider: "kakao", user: { id: user.id } }, { headers }, secure);
       } catch (error) {
         logError("kakao.authentication_exception", error, context);
@@ -223,20 +193,10 @@ const worker = {
     if (request.method === "GET" && url.pathname === "/api/me") {
       const sessionId = getCookie(request, SESSION_COOKIE);
       if (!sessionId) return json({ error: "Unauthorized" }, { status: 401 }, secure);
-
       try {
         const user = await getSessionUser(env.DB, sessionId);
-        if (!user) {
-          return json({ error: "Unauthorized" }, {
-            status: 401,
-            headers: { "Set-Cookie": clearCookie(SESSION_COOKIE, secure) },
-          }, secure);
-        }
-        return json({ authenticated: true, user: {
-          id: user.id,
-          nickname: user.nickname,
-          profile_image_url: user.profile_image_url,
-        }}, {}, secure);
+        if (!user) return json({ error: "Unauthorized" }, { status: 401, headers: { "Set-Cookie": clearCookie(SESSION_COOKIE, secure) } }, secure);
+        return json({ authenticated: true, user: { id: user.id, nickname: user.nickname, profile_image_url: user.profile_image_url } }, {}, secure);
       } catch (error) {
         logError("auth.session_lookup_failed", error, context);
         return json({ error: "Authentication service unavailable" }, { status: 503 }, secure);
@@ -252,18 +212,12 @@ const worker = {
         return json({ error: "Authentication service unavailable" }, { status: 503 }, secure);
       }
       if (!user) return json({ error: "Unauthorized" }, { status: 401 }, secure);
-
       const body = await parseJsonBody(request);
-      if (body?.confirmation !== "DELETE") {
-        return json({ error: "Account deletion requires confirmation" }, { status: 400 }, secure);
-      }
-
+      if (body?.confirmation !== "DELETE") return json({ error: "Account deletion requires confirmation" }, { status: 400 }, secure);
       try {
         await deleteAccount(env.DB, user.id);
         logInfo("account.deleted", { request_id: requestId });
-        return json({ deleted: true }, {
-          headers: { "Set-Cookie": clearCookie(SESSION_COOKIE, secure) },
-        }, secure);
+        return json({ deleted: true }, { headers: { "Set-Cookie": clearCookie(SESSION_COOKIE, secure) } }, secure);
       } catch (error) {
         logError("account.delete_failed", error, context);
         return json({ error: "Account deletion service unavailable" }, { status: 503 }, secure);
@@ -279,13 +233,9 @@ const worker = {
         return json({ error: "Authentication service unavailable" }, { status: 503 }, secure);
       }
       if (!user) return json({ error: "Unauthorized" }, { status: 401 }, secure);
-
       if (request.method === "GET" && url.pathname === "/api/settings") {
         try {
-          const result = await env.DB.prepare(
-            `SELECT setting_key, setting_value FROM user_settings
-             WHERE user_id = ? ORDER BY setting_key`,
-          ).bind(user.id).all<SettingRow>();
+          const result = await env.DB.prepare(`SELECT setting_key, setting_value FROM user_settings WHERE user_id = ? ORDER BY setting_key`).bind(user.id).all<SettingRow>();
           const settings: Record<string, string> = {};
           for (const row of result.results) settings[row.setting_key] = row.setting_value;
           return json({ settings }, {}, secure);
@@ -294,16 +244,11 @@ const worker = {
           return json({ error: "Settings service unavailable" }, { status: 503 }, secure);
         }
       }
-
       const key = parseSettingKey(url.pathname);
       if (!key) return json({ error: "Invalid setting key" }, { status: 400 }, secure);
-
       if (request.method === "GET") {
         try {
-          const row = await env.DB.prepare(
-            `SELECT setting_key, setting_value FROM user_settings
-             WHERE user_id = ? AND setting_key = ? LIMIT 1`,
-          ).bind(user.id, key).first<SettingRow>();
+          const row = await env.DB.prepare(`SELECT setting_key, setting_value FROM user_settings WHERE user_id = ? AND setting_key = ? LIMIT 1`).bind(user.id, key).first<SettingRow>();
           if (!row) return json({ error: "Setting not found" }, { status: 404 }, secure);
           return json({ key: row.setting_key, value: row.setting_value }, {}, secure);
         } catch (error) {
@@ -311,43 +256,27 @@ const worker = {
           return json({ error: "Settings service unavailable" }, { status: 503 }, secure);
         }
       }
-
       if (request.method === "PUT") {
         const body = await parseJsonBody(request);
-        if (!body || typeof body.value !== "string" || body.value.length > MAX_SETTING_VALUE_LENGTH) {
-          return json({ error: "Invalid setting value" }, { status: 400 }, secure);
-        }
+        if (!body || typeof body.value !== "string" || body.value.length > MAX_SETTING_VALUE_LENGTH) return json({ error: "Invalid setting value" }, { status: 400 }, secure);
         try {
-          await env.DB.prepare(
-            `INSERT INTO user_settings (user_id, setting_key, setting_value, updated_at)
-             VALUES (?, ?, ?, CURRENT_TIMESTAMP)
-             ON CONFLICT(user_id, setting_key) DO UPDATE SET
-               setting_value = excluded.setting_value,
-               updated_at = CURRENT_TIMESTAMP`,
-          ).bind(user.id, key, body.value).run();
+          await env.DB.prepare(`INSERT INTO user_settings (user_id, setting_key, setting_value, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(user_id, setting_key) DO UPDATE SET setting_value = excluded.setting_value, updated_at = CURRENT_TIMESTAMP`).bind(user.id, key, body.value).run();
           return json({ key, value: body.value }, { status: 200 }, secure);
         } catch (error) {
           logError("settings.put_failed", error, context);
           return json({ error: "Settings service unavailable" }, { status: 503 }, secure);
         }
       }
-
       if (request.method === "DELETE") {
         try {
-          await env.DB.prepare(
-            "DELETE FROM user_settings WHERE user_id = ? AND setting_key = ?",
-          ).bind(user.id, key).run();
+          await env.DB.prepare("DELETE FROM user_settings WHERE user_id = ? AND setting_key = ?").bind(user.id, key).run();
           return new Response(null, { status: 204, headers: securityHeaders(secure) });
         } catch (error) {
           logError("settings.delete_failed", error, context);
           return json({ error: "Settings service unavailable" }, { status: 503 }, secure);
         }
       }
-
-      return json({ error: "Method not allowed" }, {
-        status: 405,
-        headers: { Allow: "GET, PUT, DELETE" },
-      }, secure);
+      return json({ error: "Method not allowed" }, { status: 405, headers: { Allow: "GET, PUT, DELETE" } }, secure);
     }
 
     if (request.method === "POST" && url.pathname === "/auth/logout") {
@@ -361,9 +290,7 @@ const worker = {
           return json({ error: "Logout service unavailable" }, { status: 503 }, secure);
         }
       }
-      return json({ logged_out: true }, {
-        headers: { "Set-Cookie": clearCookie(SESSION_COOKIE, secure) },
-      }, secure);
+      return json({ logged_out: true }, { headers: { "Set-Cookie": clearCookie(SESSION_COOKIE, secure) } }, secure);
     }
 
     return json({ error: "Not found" }, { status: 404 }, secure);
