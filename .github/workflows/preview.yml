@@ -13,8 +13,6 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       PREVIEW_D1_DATABASE_ID: ${{ secrets.PREVIEW_D1_DATABASE_ID }}
-      PREVIEW_APP_BASE_URL: ${{ secrets.PREVIEW_APP_BASE_URL }}
-      PREVIEW_KAKAO_REDIRECT_URI: ${{ secrets.PREVIEW_KAKAO_REDIRECT_URI }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -43,10 +41,32 @@ jobs:
           : "${CLOUDFLARE_API_TOKEN:?CLOUDFLARE_API_TOKEN secret is required}"
           : "${CLOUDFLARE_ACCOUNT_ID:?CLOUDFLARE_ACCOUNT_ID secret is required}"
           : "${PREVIEW_D1_DATABASE_ID:?PREVIEW_D1_DATABASE_ID secret is required}"
-          : "${PREVIEW_APP_BASE_URL:?PREVIEW_APP_BASE_URL secret is required}"
-          : "${PREVIEW_KAKAO_REDIRECT_URI:?PREVIEW_KAKAO_REDIRECT_URI secret is required}"
 
-      - name: Generate preview Wrangler config
+      - name: Generate bootstrap Wrangler config
+        shell: bash
+        run: |
+          set -euo pipefail
+          sed \
+            -e "s#REPLACE_WITH_PREVIEW_D1_DATABASE_ID#${PREVIEW_D1_DATABASE_ID}#" \
+            -e "s#REPLACE_WITH_PREVIEW_APP_BASE_URL#https://placeholder.invalid#" \
+            -e "s#REPLACE_WITH_PREVIEW_KAKAO_REDIRECT_URI#https://placeholder.invalid/auth/kakao/callback#" \
+            wrangler.preview.toml.example > wrangler.preview.toml
+
+      - name: Bootstrap preview Worker and discover HTTPS URL
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx wrangler deploy --config wrangler.preview.toml 2>&1 | tee preview-deploy.log
+          PREVIEW_URL="$(grep -Eo 'https://[^[:space:]]+\.workers\.dev' preview-deploy.log | tail -n 1 || true)"
+          if [ -z "${PREVIEW_URL}" ]; then
+            echo "Unable to discover the workers.dev HTTPS URL from Wrangler output."
+            exit 1
+          fi
+          echo "PREVIEW_APP_BASE_URL=${PREVIEW_URL}" >> "$GITHUB_ENV"
+          echo "PREVIEW_KAKAO_REDIRECT_URI=${PREVIEW_URL}/auth/kakao/callback" >> "$GITHUB_ENV"
+          echo "Preview Worker URL: ${PREVIEW_URL}"
+
+      - name: Generate final preview Wrangler config
         shell: bash
         run: |
           set -euo pipefail
@@ -59,5 +79,5 @@ jobs:
       - name: Apply preview D1 migrations
         run: npx wrangler d1 migrations apply kakao-account-db-preview --remote --config wrangler.preview.toml
 
-      - name: Deploy preview Worker
+      - name: Deploy preview Worker with final URL
         run: npx wrangler deploy --config wrangler.preview.toml
