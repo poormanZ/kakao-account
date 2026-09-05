@@ -20,17 +20,25 @@ Browser
           │       │
           │       └─ Kakao User API
           │
-          └─────── D1
+          └─────── Account D1
                     │
                     ├─ users
-                    └─ sessions
+                    ├─ sessions
+                    └─ user_settings
+
+          ┌──────────────────────────────┐
+          │     Service-specific DBs     │
+          │  서비스 A / 서비스 B / ...   │
+          │     user_id = users.id       │
+          └──────────────────────────────┘
 ```
 
 ### 책임 분리
 - Browser: 로그인 시작, 서비스 UI, HttpOnly 세션 쿠키 보관.
 - Kakao: 사용자 인증 및 OAuth 동의/인가 처리.
-- Worker: OAuth callback 처리, state 검증, Kakao token 교환, 사용자 조회/생성, 세션 발급, 서비스 API 제공.
-- D1: 서비스 사용자/세션/서비스 데이터 저장.
+- Worker: OAuth callback 처리, state 검증, Kakao token 교환, 사용자 조회/생성, 세션 발급, 공통 계정 API 제공.
+- Account D1: 사용자 계정, 세션, 공통 설정만 저장한다.
+- Service DB: 각 서비스의 도메인 데이터와 서비스별 권한/보관 정책을 소유한다.
 
 ## 3. 인증 흐름
 
@@ -59,17 +67,28 @@ Browser
 - token/user API 오류는 내부 상세정보를 노출하지 않고 사용자에게 일반 오류를 반환한다.
 - 이미 존재하는 `kakao_user_id`에 대해 중복 사용자 생성을 허용하지 않는다.
 
-## 6. 무료 운영 전략
+## 6. 데이터 소유권
+
+- 계정 플랫폼은 `users`, `sessions`, `user_settings`만 소유한다.
+- 서비스 도메인 데이터는 서비스별 DB에서 관리한다.
+- 서비스는 `users.id`를 내부 사용자 연결 키로 사용한다.
+- `kakao_user_id`는 서비스 DB에 직접 노출하거나 비즈니스 식별자로 사용하지 않는다.
+- 계정 삭제 시 계정 플랫폼 데이터는 삭제하고, 연결된 서비스 데이터는 서비스별 삭제 계약에 따라 처리한다.
+
+상세 규칙은 `docs/service-data.md`에 정의한다.
+
+## 7. 무료 운영 전략
 
 Cloudflare Workers Free와 D1 Free를 우선 사용한다. 현재 Cloudflare 문서 기준 Workers Free는 하루 100,000 요청, D1 Free는 하루 500만 rows read/10만 rows written 및 총 5GB 저장 한도를 제공한다. 한도 초과 시 무료 플랜에서는 해당 작업이 실패할 수 있으므로 사용량 모니터링을 포함한다.
 
 무료 한도는 영구적인 성능 보장이 아니라 초기 개발/소규모 서비스 운영을 위한 범위로 취급한다.
 
-## 7. 향후 확장
+## 8. 향후 확장
 
 - Google/Apple 등 추가 OAuth provider
 - 이메일/비밀번호가 필요할 경우 별도 인증 도메인 추가
 - 사용자 프로필 및 설정
-- 서비스별 사용자 데이터 테이블
+- 서비스별 독립 데이터 모델
 - rate limiting 및 abuse 방어
 - 감사 로그와 운영 지표
+- 서비스 추가 시 계정 삭제 연계 이벤트/콜백
