@@ -28,8 +28,9 @@ production: https://<production-domain>/auth/kakao/callback
 
 1. 32바이트 난수 기반 `state` 생성
 2. `HttpOnly`, `SameSite=Lax`, 10분 만료 쿠키에 state 저장
-3. 카카오 인가 엔드포인트로 302 redirect
-4. REST API Key는 Worker 환경변수/secret에서만 읽음
+3. callback 검증을 위해 authorization 요청에도 동일한 state 전달
+4. 카카오 인가 엔드포인트로 302 redirect
+5. REST API Key는 Worker 환경변수/secret에서만 읽음
 
 ### `/auth/kakao/callback`
 
@@ -38,20 +39,28 @@ production: https://<production-domain>/auth/kakao/callback
 3. authorization code를 access token으로 교환
 4. access token으로 `/v2/user/me` 호출
 5. 사용자 ID 형식을 검증
-6. OAuth state cookie 폐기
-7. 현재 단계에서는 서비스 세션을 발급하지 않고 인증 성공 여부만 반환
+6. `users.kakao_user_id` 기준으로 내부 사용자 생성 또는 조회
+7. 32바이트 암호학적 난수 기반 내부 세션 생성
+8. 세션 ID의 SHA-256 해시만 D1 `sessions.id`에 저장
+9. `HttpOnly`, `SameSite=Lax`, HTTPS에서는 `Secure`인 서비스 세션 쿠키 발급
+10. OAuth state cookie 폐기
 
-서비스 계정 생성 및 세션 발급은 Phase 3에서 구현한다.
+카카오 Access/Refresh Token은 저장하지 않는다.
 
-## OAuth state
+## 세션 API
 
-`state`는 CSRF 방지를 위한 일회성 값으로 사용한다.
+### `GET /api/me`
 
-- 로그인 시작 시 충분히 긴 난수 생성
-- HttpOnly cookie와 연결
-- callback에서 동일성 검증
-- 성공/실패 후 폐기
-- 10분 후 자동 만료
+서비스 세션 쿠키를 해시한 뒤 D1에서 세션을 조회한다.
+
+- 존재하지 않는 세션 → `401 Unauthorized`
+- 만료된 세션 → DB에서 삭제 후 `401 Unauthorized`
+- 유효한 세션 → `last_seen_at` 갱신 후 내부 사용자 정보 반환
+- 응답에는 카카오 사용자 ID를 포함하지 않는다.
+
+### `POST /auth/logout`
+
+현재 서비스 세션을 삭제하고 세션 쿠키를 만료시킨다. 카카오 계정 자체 로그아웃/연결 해제와는 별개의 기능이다.
 
 ## 동의항목
 
@@ -85,10 +94,11 @@ users.id
 - [x] `state` 검증
 - [ ] HTTPS production callback
 - [x] Secret을 환경변수/secret store로 관리
-- [ ] HttpOnly/Secure/SameSite 서비스 세션 쿠키
+- [x] HttpOnly/Secure/SameSite 서비스 세션 쿠키
 - [x] OAuth callback의 입력값 검증
 - [x] Kakao token API 응답 검증
 - [x] 사용자 정보 API 실패 처리
-- [ ] 중복 계정 방지
+- [x] 중복 계정 방지
+- [x] 세션 ID 원문 미저장
 - [x] 로그에 access token/secret 미출력
 - [ ] 로그인/콜백 rate limiting 검토
