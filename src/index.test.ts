@@ -67,6 +67,16 @@ describe("account authentication APIs", () => {
     expect(await response.json()).toEqual({ error: "Unauthorized" });
   });
 
+  it("returns security headers on API responses", async () => {
+    const response = await worker.fetch(new Request("https://example.com/api/me"), env(createDb()));
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    expect(response.headers.get("X-Content-Type-Options")).toBe("nosniff");
+    expect(response.headers.get("X-Frame-Options")).toBe("DENY");
+    expect(response.headers.get("Referrer-Policy")).toBe("no-referrer");
+    expect(response.headers.get("Permissions-Policy")).toBe("camera=(), microphone=(), geolocation=()");
+    expect(response.headers.get("Strict-Transport-Security")).toBe("max-age=31536000");
+  });
+
   it("returns the authenticated internal user from a valid session", async () => {
     const rawSession = "test-session";
     const sessionHash = await hashSessionId(rawSession);
@@ -146,6 +156,7 @@ describe("account authentication APIs", () => {
     expect(location.searchParams.get("state")).toMatch(/^[0-9a-f]{64}$/);
     expect(response.headers.get("Set-Cookie")).toContain(`${STATE_COOKIE}=`);
     expect(response.headers.get("Set-Cookie")).toContain("Max-Age=600");
+    expect(response.headers.get("Set-Cookie")).toContain("Secure");
   });
 
   it("rejects an OAuth callback with a tampered state", async () => {
@@ -188,6 +199,23 @@ describe("account authentication APIs", () => {
     expect(await response.json()).toEqual({ error: "Kakao authentication failed" });
   });
 
+  it("reuses an existing internal user for the same Kakao identity", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch");
+    fetchMock
+      .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: "secret-access-token" }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 123456789 }), { status: 200 }));
+
+    const response = await worker.fetch(
+      new Request("https://example.com/auth/kakao/callback?code=test-code&state=trusted-state", {
+        headers: { Cookie: `${STATE_COOKIE}=trusted-state` },
+      }),
+      env(createDb({ user: { id: 7, nickname: "tester", profile_image_url: null } }), { KAKAO_REST_API_KEY: "test-rest-key" }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ authenticated: true, provider: "kakao", user: { id: 7 } });
+  });
+
   it("completes OAuth with a Kakao user and creates a service session", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch");
     fetchMock
@@ -205,6 +233,7 @@ describe("account authentication APIs", () => {
     expect(await response.json()).toEqual({ authenticated: true, provider: "kakao", user: { id: 7 } });
     expect(response.headers.get("Set-Cookie")).toContain(`${SESSION_COOKIE}=`);
     expect(response.headers.get("Set-Cookie")).toContain(`${STATE_COOKIE}=`);
+    expect(response.headers.get("Set-Cookie")).toContain("Secure");
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({
       headers: { Authorization: "Bearer secret-access-token" },
@@ -224,6 +253,7 @@ describe("account authentication APIs", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ authenticated: false });
     expect(response.headers.get("Set-Cookie")).toContain("Max-Age=0");
+    expect(response.headers.get("Set-Cookie")).toContain("Secure");
   });
 
   it("rejects unsupported settings methods", async () => {
