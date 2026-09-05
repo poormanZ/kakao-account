@@ -293,7 +293,10 @@ export default {
         }
       }
 
-      return json({ error: "Method not allowed" }, { status: 405 }, secure);
+      return json({ error: "Method not allowed" }, {
+        status: 405,
+        headers: { Allow: "GET, PUT, DELETE" },
+      }, secure);
     }
 
     if (request.method === "POST" && url.pathname === "/auth/logout") {
