@@ -52,7 +52,8 @@ jobs:
           set -euo pipefail
           sed \
             -e "s#REPLACE_WITH_PREVIEW_D1_DATABASE_ID#${PREVIEW_D1_DATABASE_ID}#" \
-            -e "s#https://REPLACE_WITH_PREVIEW_WORKER_URL#${PREVIEW_APP_BASE_URL}#g" \
+            -e "s#https://REPLACE_WITH_PREVIEW_WORKER_URL#${PREVIEW_APP_BASE_URL}#" \
+            -e "s#https://REPLACE_WITH_PREVIEW_WORKER_URL/auth/kakao/callback#${PREVIEW_KAKAO_REDIRECT_URI}#" \
             wrangler.preview.toml.example > wrangler.preview.toml
 
       - name: Apply preview D1 migrations
