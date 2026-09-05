@@ -10,7 +10,7 @@
 ## Phase 1 — 기반 구축
 - [x] Worker 프로젝트 초기화
 - [x] TypeScript/런타임 기본 설정
-- [ ] D1 database 생성 및 binding
+- [x] D1 database 생성 및 binding
 - [x] 환경별 변수/secret 전략 구성
 - [x] 기본 health endpoint
 
@@ -32,7 +32,7 @@
 
 ## Phase 4 — 사용자 데이터
 - [x] user_settings migration
-- [ ] 사용자 설정 CRUD
+- [x] 사용자 설정 CRUD
 - [ ] 서비스별 데이터 모델 확정
 - [ ] 권한 검증 공통 모듈
 
