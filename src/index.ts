@@ -25,11 +25,13 @@ const securityHeaders = (secure: boolean): Record<string, string> => ({
   ...(secure ? { "Strict-Transport-Security": "max-age=31536000" } : {}),
 });
 
-const json = (data: unknown, init: ResponseInit = {}, secure = false) =>
-  Response.json(data, {
-    ...init,
-    headers: { ...securityHeaders(secure), ...init.headers },
-  });
+const json = (data: unknown, init: ResponseInit = {}, secure = false) => {
+  const headers = new Headers(securityHeaders(secure));
+  if (init.headers) {
+    new Headers(init.headers).forEach((value, key) => headers.set(key, value));
+  }
+  return Response.json(data, { ...init, headers });
+};
 
 const randomHex = (byteLength: number): string => {
   const bytes = new Uint8Array(byteLength);
