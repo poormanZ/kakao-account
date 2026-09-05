@@ -34,7 +34,7 @@
 - [x] user_settings migration
 - [x] 사용자 설정 CRUD
 - [ ] 서비스별 데이터 모델 확정
-- [ ] 권한 검증 공통 모듈
+- [x] 권한 검증 공통 모듈
 
 ## Phase 5 — 테스트/보안
 - [ ] OAuth 정상 흐름 테스트
