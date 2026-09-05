@@ -48,7 +48,7 @@
 - [x] GitHub Actions typecheck/test 통과
 
 ## Phase 6 — CI/CD
-- [ ] GitHub Actions lint/test
+- [x] GitHub Actions lint/test
 - [ ] Preview 배포
 - [ ] Production 배포
 - [ ] D1 migration 자동화 정책 확정
