@@ -25,11 +25,22 @@ const securityHeaders = (secure: boolean): Record<string, string> => ({
   ...(secure ? { "Strict-Transport-Security": "max-age=31536000" } : {}),
 });
 
+const appendHeaders = (target: Headers, source: Headers): void => {
+  const sourceWithGetSetCookie = source as Headers & { getSetCookie?: () => string[] };
+  const setCookies = sourceWithGetSetCookie.getSetCookie?.();
+
+  if (setCookies) {
+    for (const value of setCookies) target.append("Set-Cookie", value);
+  }
+
+  source.forEach((value, key) => {
+    if (key !== "set-cookie") target.set(key, value);
+  });
+};
+
 const json = (data: unknown, init: ResponseInit = {}, secure = false) => {
   const headers = new Headers(securityHeaders(secure));
-  if (init.headers) {
-    new Headers(init.headers).forEach((value, key) => headers.set(key, value));
-  }
+  if (init.headers) appendHeaders(headers, new Headers(init.headers));
   return Response.json(data, { ...init, headers });
 };
 
@@ -239,15 +250,24 @@ export default {
       const key = parseSettingKey(url.pathname);
       if (!key) return json({ error: "Invalid setting key" }, { status: 400 }, secure);
 
+      if (request.method === "GET") {
+        try {
+          const row = await env.DB.prepare(
+            `SELECT setting_key, setting_value FROM user_settings
+             WHERE user_id = ? AND setting_key = ? LIMIT 1`,
+          ).bind(user.id, key).first<SettingRow>();
+          if (!row) return json({ error: "Setting not found" }, { status: 404 }, secure);
+          return json({ key: row.setting_key, value: row.setting_value }, {}, secure);
+        } catch {
+          return json({ error: "Settings service unavailable" }, { status: 503 }, secure);
+        }
+      }
+
       if (request.method === "PUT") {
         const body = await parseJsonBody(request);
-        if (!body || typeof body.value !== "string") {
-          return json({ error: "Request body must contain a string value" }, { status: 400 }, secure);
+        if (!body || typeof body.value !== "string" || body.value.length > MAX_SETTING_VALUE_LENGTH) {
+          return json({ error: "Invalid setting value" }, { status: 400 }, secure);
         }
-        if (body.value.length > MAX_SETTING_VALUE_LENGTH) {
-          return json({ error: "Setting value is too long" }, { status: 400 }, secure);
-        }
-
         try {
           await env.DB.prepare(
             `INSERT INTO user_settings (user_id, setting_key, setting_value, updated_at)
@@ -256,7 +276,7 @@ export default {
                setting_value = excluded.setting_value,
                updated_at = CURRENT_TIMESTAMP`,
           ).bind(user.id, key, body.value).run();
-          return json({ setting: { key, value: body.value } }, {}, secure);
+          return json({ key, value: body.value }, { status: 200 }, secure);
         } catch {
           return json({ error: "Settings service unavailable" }, { status: 503 }, secure);
         }
@@ -264,34 +284,29 @@ export default {
 
       if (request.method === "DELETE") {
         try {
-          const result = await env.DB.prepare(
+          await env.DB.prepare(
             "DELETE FROM user_settings WHERE user_id = ? AND setting_key = ?",
           ).bind(user.id, key).run();
-          if (!result.meta.changes) return json({ error: "Setting not found" }, { status: 404 }, secure);
-          return json({ deleted: true, key }, {}, secure);
+          return new Response(null, { status: 204, headers: securityHeaders(secure) });
         } catch {
           return json({ error: "Settings service unavailable" }, { status: 503 }, secure);
         }
       }
 
-      return json({ error: "Method Not Allowed" }, { status: 405, headers: { Allow: "GET, PUT, DELETE" } }, secure);
+      return json({ error: "Method not allowed" }, { status: 405 }, secure);
     }
 
     if (request.method === "POST" && url.pathname === "/auth/logout") {
       const sessionId = getCookie(request, SESSION_COOKIE);
       if (sessionId) {
-        try {
-          const sessionHash = await hashSessionId(sessionId);
-          await env.DB.prepare("DELETE FROM sessions WHERE id = ?").bind(sessionHash).run();
-        } catch {
-          return json({ error: "Logout failed" }, { status: 503 }, secure);
-        }
+        const sessionHash = await hashSessionId(sessionId);
+        await env.DB.prepare("DELETE FROM sessions WHERE id = ?").bind(sessionHash).run();
       }
-      return json({ authenticated: false }, {
+      return json({ logged_out: true }, {
         headers: { "Set-Cookie": clearCookie(SESSION_COOKIE, secure) },
       }, secure);
     }
 
-    return json({ error: "Not Found" }, { status: 404 }, secure);
+    return json({ error: "Not found" }, { status: 404 }, secure);
   },
 };
