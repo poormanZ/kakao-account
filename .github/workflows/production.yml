@@ -52,7 +52,6 @@ jobs:
         run: |
           set -euo pipefail
           node -e 'process.stdout.write(JSON.stringify({KAKAO_REST_API_KEY: process.env.PRODUCTION_KAKAO_REST_API_KEY, KAKAO_CLIENT_SECRET: process.env.PRODUCTION_KAKAO_CLIENT_SECRET}))' > production-secrets.json
-          trap 'rm -f production-secrets.json' EXIT
           echo "Production secret file generated without printing secret values."
 
       - name: Generate bootstrap Wrangler config
@@ -101,6 +100,6 @@ jobs:
           set -euo pipefail
           curl --fail --silent --show-error "${PRODUCTION_APP_BASE_URL}/health"
 
-      - name: Cleanup temporary production secret files
+      - name: Cleanup temporary production files
         if: always()
         run: rm -f production-secrets.json wrangler.production.toml production-deploy.log
