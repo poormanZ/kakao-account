@@ -1,0 +1,13 @@
+name = "kakao-account-api"
+main = "src/index.ts"
+compatibility_date = "2026-09-05"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "kakao-account-db"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+migrations_dir = "migrations"
+
+[vars]
+APP_BASE_URL = "http://localhost:8787"
+KAKAO_REDIRECT_URI = "http://localhost:8787/auth/kakao/callback"
