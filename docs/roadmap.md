@@ -8,30 +8,30 @@
 - [x] 보안 원칙 정의
 
 ## Phase 1 — 기반 구축
-- [ ] Worker 프로젝트 초기화
-- [ ] TypeScript/런타임 기본 설정
+- [x] Worker 프로젝트 초기화
+- [x] TypeScript/런타임 기본 설정
 - [ ] D1 database 생성 및 binding
-- [ ] 환경별 변수/secret 전략 구성
-- [ ] 기본 health endpoint
+- [x] 환경별 변수/secret 전략 구성
+- [x] 기본 health endpoint
 
 ## Phase 2 — Kakao OAuth
-- [ ] `/auth/kakao` 구현
-- [ ] OAuth state 생성/검증
-- [ ] `/auth/kakao/callback` 구현
-- [ ] authorization code → access token 교환
-- [ ] Kakao 사용자 정보 조회
+- [x] `/auth/kakao` 구현
+- [x] OAuth state 생성/검증
+- [x] `/auth/kakao/callback` 구현
+- [x] authorization code → access token 교환
+- [x] Kakao 사용자 정보 조회
 
 ## Phase 3 — 계정/세션
-- [ ] users migration
+- [x] users migration
 - [ ] 신규 사용자 생성
 - [ ] 기존 사용자 로그인
-- [ ] sessions migration
+- [x] sessions migration
 - [ ] 내부 세션 발급/검증/만료
 - [ ] `/api/me`
 - [ ] `/auth/logout`
 
 ## Phase 4 — 사용자 데이터
-- [ ] user_settings migration
+- [x] user_settings migration
 - [ ] 사용자 설정 CRUD
 - [ ] 서비스별 데이터 모델 확정
 - [ ] 권한 검증 공통 모듈
