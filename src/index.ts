@@ -1,3 +1,5 @@
+import { getAuthenticatedUser, getCookie, getSessionUser, hashSessionId, type AuthUser } from "./auth";
+
 export interface Env {
   DB: D1Database;
   APP_BASE_URL: string;
@@ -12,6 +14,8 @@ const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
 const MAX_SETTING_KEY_LENGTH = 100;
 const MAX_SETTING_VALUE_LENGTH = 10_000;
 
+type UserRow = AuthUser;
+
 const json = (data: unknown, init: ResponseInit = {}) =>
   Response.json(data, {
     headers: { "Cache-Control": "no-store", ...init.headers },
@@ -24,21 +28,6 @@ const randomHex = (byteLength: number): string => {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
 };
 
-const hashSessionId = async (sessionId: string): Promise<string> => {
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(sessionId));
-  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
-};
-
-const getCookie = (request: Request, name: string): string | null => {
-  const cookieHeader = request.headers.get("Cookie");
-  if (!cookieHeader) return null;
-  for (const part of cookieHeader.split(";")) {
-    const [key, ...value] = part.trim().split("=");
-    if (key === name) return decodeURIComponent(value.join("="));
-  }
-  return null;
-};
-
 const cookie = (name: string, value: string, maxAge: number, secure: boolean): string =>
   `${name}=${encodeURIComponent(value)}; Max-Age=${maxAge}; Path=/; HttpOnly; SameSite=Lax${secure ? "; Secure" : ""}`;
 
@@ -49,12 +38,6 @@ const sessionCookie = (sessionId: string, secure: boolean): string =>
 
 interface KakaoTokenResponse { access_token?: string; }
 interface KakaoUserResponse { id?: number; }
-interface UserRow {
-  id: number;
-  nickname: string | null;
-  profile_image_url: string | null;
-}
-interface SessionUserRow extends UserRow { expires_at: string; }
 interface SettingRow { setting_key: string; setting_value: string; }
 
 const kakaoError = (headers: Headers) =>
@@ -86,37 +69,6 @@ const createSession = async (db: D1Database, userId: number): Promise<string> =>
   ).bind(sessionHash, userId, expiresAt).run();
 
   return sessionId;
-};
-
-const getSessionUser = async (db: D1Database, sessionId: string): Promise<SessionUserRow | null> => {
-  const sessionHash = await hashSessionId(sessionId);
-  const session = await db.prepare(
-    `SELECT u.id, u.nickname, u.profile_image_url, s.expires_at
-     FROM sessions s JOIN users u ON u.id = s.user_id
-     WHERE s.id = ? LIMIT 1`,
-  ).bind(sessionHash).first<SessionUserRow>();
-
-  if (!session) return null;
-  if (new Date(session.expires_at).getTime() <= Date.now()) {
-    await db.prepare("DELETE FROM sessions WHERE id = ?").bind(sessionHash).run();
-    return null;
-  }
-
-  await db.prepare("UPDATE sessions SET last_seen_at = CURRENT_TIMESTAMP WHERE id = ?")
-    .bind(sessionHash).run();
-  return session;
-};
-
-const getAuthenticatedUser = async (request: Request, env: Env): Promise<UserRow | null> => {
-  const sessionId = getCookie(request, SESSION_COOKIE);
-  if (!sessionId) return null;
-  const sessionUser = await getSessionUser(env.DB, sessionId);
-  if (!sessionUser) return null;
-  return {
-    id: sessionUser.id,
-    nickname: sessionUser.nickname,
-    profile_image_url: sessionUser.profile_image_url,
-  };
 };
 
 const parseSettingKey = (pathname: string): string | null => {
@@ -249,7 +201,7 @@ export default {
     if (url.pathname === "/api/settings" || url.pathname.startsWith("/api/settings/")) {
       let user: UserRow | null;
       try {
-        user = await getAuthenticatedUser(request, env);
+        user = await getAuthenticatedUser(request, env.DB, SESSION_COOKIE);
       } catch {
         return json({ error: "Authentication service unavailable" }, { status: 503 });
       }
