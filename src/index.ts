@@ -1,4 +1,5 @@
 import { getAuthenticatedUser, getCookie, getSessionUser, hashSessionId, type AuthUser } from "./auth";
+import { logError, logWarn } from "./logger";
 
 export interface Env {
   DB: D1Database;
@@ -62,8 +63,10 @@ interface KakaoTokenResponse { access_token?: string; }
 interface KakaoUserResponse { id?: number; }
 interface SettingRow { setting_key: string; setting_value: string; }
 
-const kakaoError = (headers: Headers, secure: boolean) =>
-  json({ error: "Kakao authentication failed" }, { status: 502, headers }, secure);
+const kakaoError = (headers: Headers, secure: boolean, requestId: string, stage: string, status?: number) => {
+  logWarn("kakao.request_failed", { request_id: requestId, stage, upstream_status: status ?? null });
+  return json({ error: "Kakao authentication failed" }, { status: 502, headers }, secure);
+};
 
 const getOrCreateUser = async (db: D1Database, kakaoUserId: string): Promise<UserRow> => {
   await db.prepare(
@@ -126,6 +129,8 @@ const worker = {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     const secure = url.protocol === "https:";
+    const requestId = randomHex(16);
+    const context = { request_id: requestId, route: url.pathname, method: request.method };
 
     if (request.method === "GET" && url.pathname === "/health") {
       return json({ status: "ok", service: "kakao-account-api" }, {}, secure);
@@ -183,25 +188,26 @@ const worker = {
           headers: { "Content-Type": "application/x-www-form-urlencoded;charset=utf-8" },
           body: tokenBody,
         });
-        if (!tokenResponse.ok) return kakaoError(headers, secure);
+        if (!tokenResponse.ok) return kakaoError(headers, secure, requestId, "token", tokenResponse.status);
 
         const token = await tokenResponse.json() as KakaoTokenResponse;
-        if (!token.access_token) return kakaoError(headers, secure);
+        if (!token.access_token) return kakaoError(headers, secure, requestId, "token_response");
 
         const userResponse = await fetch("https://kapi.kakao.com/v2/user/me", {
           headers: { Authorization: `Bearer ${token.access_token}` },
         });
-        if (!userResponse.ok) return kakaoError(headers, secure);
+        if (!userResponse.ok) return kakaoError(headers, secure, requestId, "user_info", userResponse.status);
 
         const kakaoUser = await userResponse.json() as KakaoUserResponse;
-        if (typeof kakaoUser.id !== "number") return kakaoError(headers, secure);
+        if (typeof kakaoUser.id !== "number") return kakaoError(headers, secure, requestId, "user_response");
 
         const user = await getOrCreateUser(env.DB, String(kakaoUser.id));
         const sessionId = await createSession(env.DB, user.id);
         headers.append("Set-Cookie", sessionCookie(sessionId, secure));
 
         return json({ authenticated: true, provider: "kakao", user: { id: user.id } }, { headers }, secure);
-      } catch {
+      } catch (error) {
+        logError("kakao.authentication_exception", error, context);
         return json({ error: "Kakao authentication failed" }, { status: 502, headers }, secure);
       }
     }
@@ -223,7 +229,8 @@ const worker = {
           nickname: user.nickname,
           profile_image_url: user.profile_image_url,
         }}, {}, secure);
-      } catch {
+      } catch (error) {
+        logError("auth.session_lookup_failed", error, context);
         return json({ error: "Authentication service unavailable" }, { status: 503 }, secure);
       }
     }
@@ -232,7 +239,8 @@ const worker = {
       let user: UserRow | null;
       try {
         user = await getAuthenticatedUser(request, env.DB, SESSION_COOKIE);
-      } catch {
+      } catch (error) {
+        logError("auth.settings_user_lookup_failed", error, context);
         return json({ error: "Authentication service unavailable" }, { status: 503 }, secure);
       }
       if (!user) return json({ error: "Unauthorized" }, { status: 401 }, secure);
@@ -246,7 +254,8 @@ const worker = {
           const settings: Record<string, string> = {};
           for (const row of result.results) settings[row.setting_key] = row.setting_value;
           return json({ settings }, {}, secure);
-        } catch {
+        } catch (error) {
+          logError("settings.list_failed", error, context);
           return json({ error: "Settings service unavailable" }, { status: 503 }, secure);
         }
       }
@@ -262,7 +271,8 @@ const worker = {
           ).bind(user.id, key).first<SettingRow>();
           if (!row) return json({ error: "Setting not found" }, { status: 404 }, secure);
           return json({ key: row.setting_key, value: row.setting_value }, {}, secure);
-        } catch {
+        } catch (error) {
+          logError("settings.get_failed", error, context);
           return json({ error: "Settings service unavailable" }, { status: 503 }, secure);
         }
       }
@@ -281,7 +291,8 @@ const worker = {
                updated_at = CURRENT_TIMESTAMP`,
           ).bind(user.id, key, body.value).run();
           return json({ key, value: body.value }, { status: 200 }, secure);
-        } catch {
+        } catch (error) {
+          logError("settings.put_failed", error, context);
           return json({ error: "Settings service unavailable" }, { status: 503 }, secure);
         }
       }
@@ -292,7 +303,8 @@ const worker = {
             "DELETE FROM user_settings WHERE user_id = ? AND setting_key = ?",
           ).bind(user.id, key).run();
           return new Response(null, { status: 204, headers: securityHeaders(secure) });
-        } catch {
+        } catch (error) {
+          logError("settings.delete_failed", error, context);
           return json({ error: "Settings service unavailable" }, { status: 503 }, secure);
         }
       }
@@ -306,8 +318,13 @@ const worker = {
     if (request.method === "POST" && url.pathname === "/auth/logout") {
       const sessionId = getCookie(request, SESSION_COOKIE);
       if (sessionId) {
-        const sessionHash = await hashSessionId(sessionId);
-        await env.DB.prepare("DELETE FROM sessions WHERE id = ?").bind(sessionHash).run();
+        try {
+          const sessionHash = await hashSessionId(sessionId);
+          await env.DB.prepare("DELETE FROM sessions WHERE id = ?").bind(sessionHash).run();
+        } catch (error) {
+          logError("auth.logout_failed", error, context);
+          return json({ error: "Logout service unavailable" }, { status: 503 }, secure);
+        }
       }
       return json({ logged_out: true }, {
         headers: { "Set-Cookie": clearCookie(SESSION_COOKIE, secure) },
@@ -318,7 +335,12 @@ const worker = {
   },
 
   async scheduled(_controller: ScheduledController, env: Env): Promise<void> {
-    await cleanupExpiredSessions(env.DB);
+    try {
+      await cleanupExpiredSessions(env.DB);
+    } catch (error) {
+      logError("sessions.cleanup_failed", error, { job: "session_cleanup" });
+      throw error;
+    }
   },
 };
 
