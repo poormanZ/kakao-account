@@ -16,10 +16,19 @@ const MAX_SETTING_VALUE_LENGTH = 10_000;
 
 type UserRow = AuthUser;
 
-const json = (data: unknown, init: ResponseInit = {}) =>
+const securityHeaders = (secure: boolean): Record<string, string> => ({
+  "Cache-Control": "no-store",
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "Referrer-Policy": "no-referrer",
+  "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+  ...(secure ? { "Strict-Transport-Security": "max-age=31536000" } : {}),
+});
+
+const json = (data: unknown, init: ResponseInit = {}, secure = false) =>
   Response.json(data, {
-    headers: { "Cache-Control": "no-store", ...init.headers },
     ...init,
+    headers: { ...securityHeaders(secure), ...init.headers },
   });
 
 const randomHex = (byteLength: number): string => {
@@ -40,8 +49,8 @@ interface KakaoTokenResponse { access_token?: string; }
 interface KakaoUserResponse { id?: number; }
 interface SettingRow { setting_key: string; setting_value: string; }
 
-const kakaoError = (headers: Headers) =>
-  json({ error: "Kakao authentication failed" }, { status: 502, headers });
+const kakaoError = (headers: Headers, secure: boolean) =>
+  json({ error: "Kakao authentication failed" }, { status: 502, headers }, secure);
 
 const getOrCreateUser = async (db: D1Database, kakaoUserId: string): Promise<UserRow> => {
   await db.prepare(
@@ -102,15 +111,15 @@ export default {
     const secure = url.protocol === "https:";
 
     if (request.method === "GET" && url.pathname === "/health") {
-      return json({ status: "ok", service: "kakao-account-api" });
+      return json({ status: "ok", service: "kakao-account-api" }, {}, secure);
     }
 
     if (request.method === "GET" && url.pathname === "/") {
-      return json({ service: "kakao-account-api", status: "ready" });
+      return json({ service: "kakao-account-api", status: "ready" }, {}, secure);
     }
 
     if (request.method === "GET" && url.pathname === "/auth/kakao") {
-      if (!env.KAKAO_REST_API_KEY) return json({ error: "Kakao login is not configured" }, { status: 503 });
+      if (!env.KAKAO_REST_API_KEY) return json({ error: "Kakao login is not configured" }, { status: 503 }, secure);
 
       const state = randomHex(32);
       const authorizeUrl = new URL("https://kauth.kakao.com/oauth/authorize");
@@ -121,7 +130,11 @@ export default {
 
       return new Response(null, {
         status: 302,
-        headers: { Location: authorizeUrl.toString(), "Set-Cookie": stateCookie(state, secure), "Cache-Control": "no-store" },
+        headers: {
+          ...securityHeaders(secure),
+          Location: authorizeUrl.toString(),
+          "Set-Cookie": stateCookie(state, secure),
+        },
       });
     }
 
@@ -130,14 +143,14 @@ export default {
       const returnedState = url.searchParams.get("state");
       const savedState = getCookie(request, STATE_COOKIE);
       const error = url.searchParams.get("error");
-      const headers = new Headers({ "Cache-Control": "no-store" });
+      const headers = new Headers(securityHeaders(secure));
       headers.append("Set-Cookie", clearCookie(STATE_COOKIE, secure));
 
-      if (error === "access_denied") return json({ error: "Kakao login was cancelled" }, { status: 400, headers });
+      if (error === "access_denied") return json({ error: "Kakao login was cancelled" }, { status: 400, headers }, secure);
       if (!code || !returnedState || !savedState || returnedState !== savedState) {
-        return json({ error: "Invalid OAuth state or authorization code" }, { status: 400, headers });
+        return json({ error: "Invalid OAuth state or authorization code" }, { status: 400, headers }, secure);
       }
-      if (!env.KAKAO_REST_API_KEY) return json({ error: "Kakao login is not configured" }, { status: 503, headers });
+      if (!env.KAKAO_REST_API_KEY) return json({ error: "Kakao login is not configured" }, { status: 503, headers }, secure);
 
       try {
         const tokenBody = new URLSearchParams({
@@ -153,32 +166,32 @@ export default {
           headers: { "Content-Type": "application/x-www-form-urlencoded;charset=utf-8" },
           body: tokenBody,
         });
-        if (!tokenResponse.ok) return kakaoError(headers);
+        if (!tokenResponse.ok) return kakaoError(headers, secure);
 
         const token = await tokenResponse.json() as KakaoTokenResponse;
-        if (!token.access_token) return kakaoError(headers);
+        if (!token.access_token) return kakaoError(headers, secure);
 
         const userResponse = await fetch("https://kapi.kakao.com/v2/user/me", {
           headers: { Authorization: `Bearer ${token.access_token}` },
         });
-        if (!userResponse.ok) return kakaoError(headers);
+        if (!userResponse.ok) return kakaoError(headers, secure);
 
         const kakaoUser = await userResponse.json() as KakaoUserResponse;
-        if (typeof kakaoUser.id !== "number") return kakaoError(headers);
+        if (typeof kakaoUser.id !== "number") return kakaoError(headers, secure);
 
         const user = await getOrCreateUser(env.DB, String(kakaoUser.id));
         const sessionId = await createSession(env.DB, user.id);
         headers.append("Set-Cookie", sessionCookie(sessionId, secure));
 
-        return json({ authenticated: true, provider: "kakao", user: { id: user.id } }, { headers });
+        return json({ authenticated: true, provider: "kakao", user: { id: user.id } }, { headers }, secure);
       } catch {
-        return json({ error: "Kakao authentication failed" }, { status: 502, headers });
+        return json({ error: "Kakao authentication failed" }, { status: 502, headers }, secure);
       }
     }
 
     if (request.method === "GET" && url.pathname === "/api/me") {
       const sessionId = getCookie(request, SESSION_COOKIE);
-      if (!sessionId) return json({ error: "Unauthorized" }, { status: 401 });
+      if (!sessionId) return json({ error: "Unauthorized" }, { status: 401 }, secure);
 
       try {
         const user = await getSessionUser(env.DB, sessionId);
@@ -186,15 +199,15 @@ export default {
           return json({ error: "Unauthorized" }, {
             status: 401,
             headers: { "Set-Cookie": clearCookie(SESSION_COOKIE, secure) },
-          });
+          }, secure);
         }
         return json({ authenticated: true, user: {
           id: user.id,
           nickname: user.nickname,
           profile_image_url: user.profile_image_url,
-        }});
+        }}, {}, secure);
       } catch {
-        return json({ error: "Authentication service unavailable" }, { status: 503 });
+        return json({ error: "Authentication service unavailable" }, { status: 503 }, secure);
       }
     }
 
@@ -203,9 +216,9 @@ export default {
       try {
         user = await getAuthenticatedUser(request, env.DB, SESSION_COOKIE);
       } catch {
-        return json({ error: "Authentication service unavailable" }, { status: 503 });
+        return json({ error: "Authentication service unavailable" }, { status: 503 }, secure);
       }
-      if (!user) return json({ error: "Unauthorized" }, { status: 401 });
+      if (!user) return json({ error: "Unauthorized" }, { status: 401 }, secure);
 
       if (request.method === "GET" && url.pathname === "/api/settings") {
         try {
@@ -215,22 +228,22 @@ export default {
           ).bind(user.id).all<SettingRow>();
           const settings: Record<string, string> = {};
           for (const row of result.results) settings[row.setting_key] = row.setting_value;
-          return json({ settings });
+          return json({ settings }, {}, secure);
         } catch {
-          return json({ error: "Settings service unavailable" }, { status: 503 });
+          return json({ error: "Settings service unavailable" }, { status: 503 }, secure);
         }
       }
 
       const key = parseSettingKey(url.pathname);
-      if (!key) return json({ error: "Invalid setting key" }, { status: 400 });
+      if (!key) return json({ error: "Invalid setting key" }, { status: 400 }, secure);
 
       if (request.method === "PUT") {
         const body = await parseJsonBody(request);
         if (!body || typeof body.value !== "string") {
-          return json({ error: "Request body must contain a string value" }, { status: 400 });
+          return json({ error: "Request body must contain a string value" }, { status: 400 }, secure);
         }
         if (body.value.length > MAX_SETTING_VALUE_LENGTH) {
-          return json({ error: "Setting value is too long" }, { status: 400 });
+          return json({ error: "Setting value is too long" }, { status: 400 }, secure);
         }
 
         try {
@@ -241,9 +254,9 @@ export default {
                setting_value = excluded.setting_value,
                updated_at = CURRENT_TIMESTAMP`,
           ).bind(user.id, key, body.value).run();
-          return json({ setting: { key, value: body.value } });
+          return json({ setting: { key, value: body.value } }, {}, secure);
         } catch {
-          return json({ error: "Settings service unavailable" }, { status: 503 });
+          return json({ error: "Settings service unavailable" }, { status: 503 }, secure);
         }
       }
 
@@ -252,14 +265,14 @@ export default {
           const result = await env.DB.prepare(
             "DELETE FROM user_settings WHERE user_id = ? AND setting_key = ?",
           ).bind(user.id, key).run();
-          if (!result.meta.changes) return json({ error: "Setting not found" }, { status: 404 });
-          return json({ deleted: true, key });
+          if (!result.meta.changes) return json({ error: "Setting not found" }, { status: 404 }, secure);
+          return json({ deleted: true, key }, {}, secure);
         } catch {
-          return json({ error: "Settings service unavailable" }, { status: 503 });
+          return json({ error: "Settings service unavailable" }, { status: 503 }, secure);
         }
       }
 
-      return json({ error: "Method Not Allowed" }, { status: 405, headers: { Allow: "GET, PUT, DELETE" } });
+      return json({ error: "Method Not Allowed" }, { status: 405, headers: { Allow: "GET, PUT, DELETE" } }, secure);
     }
 
     if (request.method === "POST" && url.pathname === "/auth/logout") {
@@ -269,14 +282,14 @@ export default {
           const sessionHash = await hashSessionId(sessionId);
           await env.DB.prepare("DELETE FROM sessions WHERE id = ?").bind(sessionHash).run();
         } catch {
-          return json({ error: "Logout failed" }, { status: 503 });
+          return json({ error: "Logout failed" }, { status: 503 }, secure);
         }
       }
       return json({ authenticated: false }, {
         headers: { "Set-Cookie": clearCookie(SESSION_COOKIE, secure) },
-      });
+      }, secure);
     }
 
-    return json({ error: "Not Found" }, { status: 404 });
+    return json({ error: "Not Found" }, { status: 404 }, secure);
   },
 };
