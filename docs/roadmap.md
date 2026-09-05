@@ -50,7 +50,7 @@
 ## Phase 6 — CI/CD
 - [x] GitHub Actions lint/test
 - [x] Preview 배포
-- [ ] Production 배포
+- [x] Production 배포
 - [x] D1 migration 자동화 정책 확정
 - [x] 배포 전 secret/환경 확인
 
