@@ -15,7 +15,7 @@ const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
 const MAX_SETTING_KEY_LENGTH = 100;
 const MAX_SETTING_VALUE_LENGTH = 10_000;
 
-type UserRow = AuthUser;
+export type UserRow = AuthUser;
 
 const securityHeaders = (secure: boolean): Record<string, string> => ({
   "Cache-Control": "no-store",
@@ -28,7 +28,7 @@ const securityHeaders = (secure: boolean): Record<string, string> => ({
 
 const appendHeaders = (target: Headers, source: Headers): void => {
   const sourceWithGetSetCookie = source as Headers & { getSetCookie?: () => string[] };
-  const setCookies = sourceWithGetSetCookie.getSetCookie?.();
+  const setCookies = sourceWithGetCookie.getSetCookie?.();
 
   if (setCookies) {
     for (const value of setCookies) target.append("Set-Cookie", value);
@@ -94,6 +94,14 @@ const createSession = async (db: D1Database, userId: number): Promise<string> =>
   ).bind(sessionHash, userId, expiresAt).run();
 
   return sessionId;
+};
+
+const deleteAccount = async (db: D1Database, userId: number): Promise<void> => {
+  await db.batch([
+    db.prepare("DELETE FROM user_settings WHERE user_id = ?").bind(userId),
+    db.prepare("DELETE FROM sessions WHERE user_id = ?").bind(userId),
+    db.prepare("DELETE FROM users WHERE id = ?").bind(userId),
+  ]);
 };
 
 const parseSettingKey = (pathname: string): string | null => {
@@ -232,6 +240,33 @@ const worker = {
       } catch (error) {
         logError("auth.session_lookup_failed", error, context);
         return json({ error: "Authentication service unavailable" }, { status: 503 }, secure);
+      }
+    }
+
+    if (request.method === "DELETE" && url.pathname === "/api/account") {
+      let user: UserRow | null;
+      try {
+        user = await getAuthenticatedUser(request, env.DB, SESSION_COOKIE);
+      } catch (error) {
+        logError("auth.account_delete_user_lookup_failed", error, context);
+        return json({ error: "Authentication service unavailable" }, { status: 503 }, secure);
+      }
+      if (!user) return json({ error: "Unauthorized" }, { status: 401 }, secure);
+
+      const body = await parseJsonBody(request);
+      if (body?.confirmation !== "DELETE") {
+        return json({ error: "Account deletion requires confirmation" }, { status: 400 }, secure);
+      }
+
+      try {
+        await deleteAccount(env.DB, user.id);
+        logInfo("account.deleted", { request_id: requestId });
+        return json({ deleted: true }, {
+          headers: { "Set-Cookie": clearCookie(SESSION_COOKIE, secure) },
+        }, secure);
+      } catch (error) {
+        logError("account.delete_failed", error, context);
+        return json({ error: "Account deletion service unavailable" }, { status: 503 }, secure);
       }
     }
 
