@@ -15,7 +15,8 @@ const createDb = () => {
   const db = {
     prepare(sql: string) {
       return {
-        bind(..._args: unknown[]) {
+        bind(...args: unknown[]) {
+          void args;
           return {
             async first<T>() {
               if (sql.includes("FROM sessions s JOIN users u")) {
@@ -99,11 +100,7 @@ describe("account deletion API", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ deleted: true });
     expect(batch).toHaveBeenCalledTimes(1);
-    expect(statements).toEqual([
-      "[object Object]",
-      "[object Object]",
-      "[object Object]",
-    ]);
+    expect(statements).toEqual(["[object Object]", "[object Object]", "[object Object]"]);
     const setCookie = response.headers.get("Set-Cookie") ?? "";
     expect(setCookie).toContain("Max-Age=0");
     expect(setCookie).toContain("Secure");
