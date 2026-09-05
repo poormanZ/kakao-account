@@ -14,6 +14,13 @@ interface FakeRow {
   setting_value?: string;
 }
 
+const getSetCookies = (headers: Headers): string[] => {
+  const candidate = headers as Headers & { getSetCookie?: () => string[] };
+  if (typeof candidate.getSetCookie === "function") return candidate.getSetCookie();
+  const value = headers.get("Set-Cookie");
+  return value ? [value] : [];
+};
+
 const createDb = (options: {
   session?: FakeRow | null;
   user?: FakeRow | null;
@@ -154,9 +161,10 @@ describe("account authentication APIs", () => {
     expect(location.searchParams.get("client_id")).toBe("test-rest-key");
     expect(location.searchParams.get("response_type")).toBe("code");
     expect(location.searchParams.get("state")).toMatch(/^[0-9a-f]{64}$/);
-    expect(response.headers.get("Set-Cookie")).toContain(`${STATE_COOKIE}=`);
-    expect(response.headers.get("Set-Cookie")).toContain("Max-Age=600");
-    expect(response.headers.get("Set-Cookie")).toContain("Secure");
+    const setCookies = getSetCookies(response.headers);
+    expect(setCookies.some((cookie) => cookie.startsWith(`${STATE_COOKIE}=`))).toBe(true);
+    expect(setCookies.some((cookie) => cookie.includes("Max-Age=600"))).toBe(true);
+    expect(setCookies.some((cookie) => cookie.includes("Secure"))).toBe(true);
   });
 
   it("rejects an OAuth callback with a tampered state", async () => {
@@ -231,9 +239,10 @@ describe("account authentication APIs", () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ authenticated: true, provider: "kakao", user: { id: 7 } });
-    expect(response.headers.get("Set-Cookie")).toContain(`${SESSION_COOKIE}=`);
-    expect(response.headers.get("Set-Cookie")).toContain(`${STATE_COOKIE}=`);
-    expect(response.headers.get("Set-Cookie")).toContain("Secure");
+    const setCookies = getSetCookies(response.headers);
+    expect(setCookies.some((cookie) => cookie.startsWith(`${SESSION_COOKIE}=`))).toBe(true);
+    expect(setCookies.some((cookie) => cookie.startsWith(`${STATE_COOKIE}=`))).toBe(true);
+    expect(setCookies.some((cookie) => cookie.includes("Secure"))).toBe(true);
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({
       headers: { Authorization: "Bearer secret-access-token" },
