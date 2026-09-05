@@ -116,7 +116,39 @@ Production 배포는 `workflow_dispatch`로만 실행하여 일반적인 `main` 
 
 Production workflow는 secret 값을 로그에 출력하지 않는다. CI runner에서 임시 JSON 파일을 생성해 Wrangler의 `--secrets-file`로 전달하고 workflow 종료 시 파일을 삭제한다.
 
-### 2026-09-05 Production 배포 검증 결과
+## 운영 로그
+
+Worker는 운영 오류를 구조화된 JSON 한 줄 로그로 기록한다. 로그에는 `request_id`, route, method, 이벤트명, 오류 타입 등 장애 분석에 필요한 최소 정보만 포함한다.
+
+오류 객체의 실제 message는 로그에 기록하지 않는다. 따라서 OAuth authorization code, Kakao access token, client secret, Cookie 값 등의 민감정보가 예외 메시지를 통해 로그로 유출되는 것을 방지한다.
+
+주요 이벤트 예:
+
+```text
+kakao.request_failed
+kakao.authentication_exception
+auth.session_lookup_failed
+settings.list_failed
+settings.get_failed
+settings.put_failed
+settings.delete_failed
+auth.logout_failed
+sessions.cleanup_failed
+```
+
+Kakao upstream 실패는 HTTP status와 실패 단계만 기록하며, upstream response body는 기록하지 않는다.
+
+## 세션 정리
+
+Production/Preview Worker에는 시간당 한 번 실행되는 Cron Trigger가 설정되어 있다.
+
+```text
+0 * * * *
+```
+
+Cron 실행 시 D1의 `sessions` 테이블에서 `expires_at <= CURRENT_TIMESTAMP`인 세션을 삭제한다. 요청 처리 중 만료 세션을 발견했을 때도 해당 세션은 즉시 삭제한다.
+
+## 2026-09-05 Production 배포 검증 결과
 
 GitHub Actions run `33980601195`에서 Production 배포 전체 흐름을 성공적으로 검증했다.
 
@@ -136,14 +168,37 @@ Health 응답:
 {"status":"ok","service":"kakao-account-api"}
 ```
 
-### 현재 Production 체크리스트
+## Production OAuth 실제 검증
+
+Production Worker에서 Kakao 로그인을 실제 수행하여 다음 흐름을 확인했다.
+
+```text
+Kakao 로그인
+→ OAuth callback
+→ authorization code 교환
+→ Kakao 사용자 조회
+→ D1 내부 사용자 생성/조회
+→ service session 발급
+→ /api/me 인증 확인
+```
+
+검증 결과 `/api/me`에서 다음과 같이 정상 인증된 내부 사용자가 반환되었다.
+
+```json
+{"authenticated":true,"user":{"id":1,"nickname":null,"profile_image_url":null}}
+```
+
+## 현재 Production 체크리스트
 
 - [x] GitHub `production` Environment 및 secret 확인
 - [x] Production workflow 실행
 - [x] 실제 Production Worker URL 확인
-- [ ] Kakao Redirect URI 등록/확인
+- [x] Kakao Redirect URI 등록/확인
 - [x] `/health` smoke test 성공
-- [ ] Kakao 로그인 실제 흐름 검증
+- [x] Kakao 로그인 실제 흐름 검증
+- [x] `/api/me` 실제 세션 검증
+- [x] 시간당 세션 정리 Cron 설정
+- [x] 구조화 운영 로그 구현 및 테스트
 
 ### 실행
 
