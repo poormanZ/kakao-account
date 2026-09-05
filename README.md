@@ -25,6 +25,16 @@
 - [카카오 로그인 설계](docs/kakao-login.md)
 - [로드맵](docs/roadmap.md)
 
+## 로컬 시작
+
+1. `wrangler.toml.example`을 기준으로 Worker 설정을 준비한다.
+2. Cloudflare D1을 생성하고 `database_id`를 환경별 설정에 입력한다.
+3. `.dev.vars.example`을 `.dev.vars`로 복사하고 Kakao REST API Key/Client Secret을 입력한다.
+4. `npm install` 후 `npm run dev`로 Worker를 실행한다.
+5. `GET /health`로 기본 상태를 확인한다.
+
+실제 비밀값은 Git에 커밋하지 않는다. 운영 환경의 비밀값은 Cloudflare secret으로 관리한다.
+
 ## 현재 상태
 
-Phase 0 설계 완료. 다음 단계는 Cloudflare Worker와 D1 기반 프로젝트 초기화다.
+Phase 0 설계 완료 및 Phase 1 기반 코드/Phase 2 Kakao OAuth 흐름 구현 완료. 다음 단계는 D1 실제 생성/연결 확인 후 사용자 계정 생성과 내부 세션 발급을 구현하는 것이다.
