@@ -12,5 +12,5 @@ migrations_dir = "migrations"
 
 [vars]
 # Replace these values in the generated preview config before deployment.
-APP_BASE_URL = "https://REPLACE_WITH_PREVIEW_WORKER_URL"
-KAKAO_REDIRECT_URI = "https://REPLACE_WITH_PREVIEW_WORKER_URL/auth/kakao/callback"
+APP_BASE_URL = "REPLACE_WITH_PREVIEW_APP_BASE_URL"
+KAKAO_REDIRECT_URI = "REPLACE_WITH_PREVIEW_KAKAO_REDIRECT_URI"
