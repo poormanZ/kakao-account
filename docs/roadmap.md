@@ -37,13 +37,15 @@
 - [x] 권한 검증 공통 모듈
 
 ## Phase 5 — 테스트/보안
-- [ ] OAuth 정상 흐름 테스트
-- [ ] 취소/실패 흐름 테스트
-- [ ] state 변조 테스트
-- [ ] 중복 사용자 테스트
-- [ ] 세션 만료/로그아웃 테스트
-- [ ] 민감정보 로그 노출 점검
-- [ ] rate limiting 검토
+- [x] OAuth 정상 흐름 테스트
+- [x] 취소/실패 흐름 테스트
+- [x] state 변조 테스트
+- [x] 중복 사용자 테스트
+- [x] 세션 만료/로그아웃 테스트
+- [x] 민감정보 로그 노출 점검
+- [x] rate limiting 검토
+- [x] 보안 응답 헤더 및 Secure/HttpOnly 쿠키 점검
+- [x] GitHub Actions typecheck/test 통과
 
 ## Phase 6 — CI/CD
 - [ ] GitHub Actions lint/test
