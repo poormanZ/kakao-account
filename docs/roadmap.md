@@ -30,6 +30,7 @@
 - [x] 내부 세션 발급/검증/만료
 - [x] `/api/me`
 - [x] `/auth/logout`
+- [x] 인증된 사용자 계정 삭제 `/api/account`
 
 ## Phase 4 — 사용자 데이터
 - [x] user_settings migration
@@ -59,7 +60,7 @@
 - [ ] Worker/D1 사용량 모니터링
 - [x] 오류 로깅/알림 — 구조화 JSON 로그 + request ID + 민감정보 비노출
 - [x] 세션 정리 작업 — 만료 세션 hourly Cron + D1 cleanup
-- [ ] 개인정보 보관/삭제 정책
+- [x] 개인정보 보관/삭제 정책 — 최소 보관 + 인증된 사용자 계정 삭제 API
 - [ ] 무료 한도 초과 대응 계획
 
 ## 완료 기준
