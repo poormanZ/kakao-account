@@ -23,12 +23,12 @@
 
 ## Phase 3 — 계정/세션
 - [x] users migration
-- [ ] 신규 사용자 생성
-- [ ] 기존 사용자 로그인
+- [x] 신규 사용자 생성
+- [x] 기존 사용자 로그인
 - [x] sessions migration
-- [ ] 내부 세션 발급/검증/만료
-- [ ] `/api/me`
-- [ ] `/auth/logout`
+- [x] 내부 세션 발급/검증/만료
+- [x] `/api/me`
+- [x] `/auth/logout`
 
 ## Phase 4 — 사용자 데이터
 - [x] user_settings migration
