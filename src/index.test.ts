@@ -113,6 +113,28 @@ describe("account authentication APIs", () => {
     expect(response.headers.get("Set-Cookie")).toContain("Max-Age=0");
   });
 
+  it("logs session lookup failures without exposing the error message", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const db = {
+      prepare() {
+        throw new Error("secret database connection detail");
+      },
+    } as unknown as D1Database;
+
+    const response = await worker.fetch(
+      new Request("https://example.com/api/me", { headers: { Cookie: `${SESSION_COOKIE}=test-session` } }),
+      env(db),
+    );
+
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ error: "Authentication service unavailable" });
+    expect(consoleError).toHaveBeenCalledTimes(1);
+    const logLine = String(consoleError.mock.calls[0]?.[0] ?? "");
+    expect(logLine).toContain("auth.session_lookup_failed");
+    expect(logLine).toContain("error_type");
+    expect(logLine).not.toContain("secret database connection detail");
+  });
+
   it("requires authentication for settings", async () => {
     const response = await worker.fetch(new Request("http://localhost/api/settings"), env(createDb()));
     expect(response.status).toBe(401);
