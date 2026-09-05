@@ -260,7 +260,7 @@ describe("account authentication APIs", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ authenticated: false });
+    expect(await response.json()).toEqual({ logged_out: true });
     expect(response.headers.get("Set-Cookie")).toContain("Max-Age=0");
     expect(response.headers.get("Set-Cookie")).toContain("Secure");
   });
