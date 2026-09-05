@@ -1,5 +1,5 @@
 name = "kakao-account-api-preview"
-main = "src/index.ts"
+main = "src/app.ts"
 compatibility_date = "2026-09-05"
 
 # Preview must use a dedicated D1 database.
