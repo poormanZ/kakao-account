@@ -4,6 +4,9 @@ compatibility_date = "2026-09-05"
 
 # Preview must use a dedicated D1 database.
 # The actual database ID is injected by the GitHub Actions preview workflow.
+[triggers]
+crons = ["0 * * * *"]
+
 [[d1_databases]]
 binding = "DB"
 database_name = "kakao-account-db-preview"
