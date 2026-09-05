@@ -16,6 +16,12 @@ interface KakaoUserResponse {
   kakao_account?: { profile?: { nickname?: string } };
 }
 
+const hasControlCharacters = (value: string): boolean =>
+  Array.from(value).some((character) => {
+    const code = character.charCodeAt(0);
+    return code < 32 || code === 127;
+  });
+
 const parseJsonBody = async (request: Request): Promise<Record<string, unknown> | null> => {
   const contentType = request.headers.get("Content-Type")?.split(";", 1)[0].trim().toLowerCase();
   if (contentType !== "application/json") return null;
@@ -28,17 +34,6 @@ const parseJsonBody = async (request: Request): Promise<Record<string, unknown> 
   }
 };
 
-const copyHeaders = (source: Headers): Headers => {
-  const target = new Headers();
-  const sourceWithGetCookie = source as Headers & { getSetCookie?: () => string[] };
-  const setCookies = sourceWithGetCookie.getSetCookie?.();
-  if (setCookies) for (const value of setCookies) target.append("Set-Cookie", value);
-  source.forEach((value, key) => {
-    if (key !== "set-cookie") target.set(key, value);
-  });
-  return target;
-};
-
 const htmlHeaders = (): Headers => new Headers({
   "Content-Type": "text/html; charset=UTF-8",
   "Cache-Control": "no-store",
@@ -47,6 +42,16 @@ const htmlHeaders = (): Headers => new Headers({
   "Referrer-Policy": "no-referrer",
   "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
   "Content-Security-Policy": "default-src 'self'; img-src 'self' https: data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'",
+});
+
+const apiJson = (data: unknown, status = 200): Response => Response.json(data, {
+  status,
+  headers: {
+    "Cache-Control": "no-store",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "no-referrer",
+  },
 });
 
 const page = (user: AuthUser | null, error?: string | null): Response =>
@@ -59,7 +64,7 @@ const getKakaoNickname = (user: KakaoUserResponse): string | null => {
   const nickname = user.properties?.nickname ?? user.kakao_account?.profile?.nickname;
   if (!nickname) return null;
   const value = nickname.trim();
-  if (value.length < MIN_NICKNAME_LENGTH || value.length > MAX_NICKNAME_LENGTH || /[\u0000-\u001F\u007F]/.test(value)) return null;
+  if (value.length < MIN_NICKNAME_LENGTH || value.length > MAX_NICKNAME_LENGTH || hasControlCharacters(value)) return null;
   return value;
 };
 
@@ -175,31 +180,29 @@ const app = {
         user = await getAuthenticatedUser(request, env.DB, SESSION_COOKIE);
       } catch (error) {
         logError("profile.nickname_user_lookup_failed", error, { route: url.pathname, method: request.method });
-        return Response.json({ error: "Authentication service unavailable" }, { status: 503 });
+        return apiJson({ error: "Authentication service unavailable" }, 503);
       }
-      if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+      if (!user) return apiJson({ error: "Unauthorized" }, 401);
 
       const body = await parseJsonBody(request);
       const nickname = typeof body?.nickname === "string" ? body.nickname.trim() : "";
-      if (nickname.length < MIN_NICKNAME_LENGTH || nickname.length > MAX_NICKNAME_LENGTH || /[\u0000-\u001F\u007F]/.test(nickname)) {
-        return Response.json({ error: "Nickname must be 2-20 characters" }, { status: 400 });
+      if (nickname.length < MIN_NICKNAME_LENGTH || nickname.length > MAX_NICKNAME_LENGTH || hasControlCharacters(nickname)) {
+        return apiJson({ error: "Nickname must be 2-20 characters" }, 400);
       }
 
       try {
         const existing = await env.DB.prepare("SELECT id FROM users WHERE nickname = ? LIMIT 1").bind(nickname).first<{ id: number }>();
-        if (existing && existing.id !== user.id) return Response.json({ error: "Nickname already in use" }, { status: 409 });
+        if (existing && existing.id !== user.id) return apiJson({ error: "Nickname already in use" }, 409);
         await env.DB.prepare("UPDATE users SET nickname = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(nickname, user.id).run();
-        return Response.json({ nickname });
+        return apiJson({ nickname });
       } catch (error) {
-        if (error instanceof Error && /unique|constraint/i.test(error.message)) return Response.json({ error: "Nickname already in use" }, { status: 409 });
+        if (error instanceof Error && /unique|constraint/i.test(error.message)) return apiJson({ error: "Nickname already in use" }, 409);
         logError("profile.nickname_update_failed", error, { route: url.pathname, method: request.method });
-        return Response.json({ error: "Profile service unavailable" }, { status: 503 });
+        return apiJson({ error: "Profile service unavailable" }, 503);
       }
     }
 
-    if (request.method === "GET" && url.pathname === "/auth/kakao/callback") {
-      return completeKakaoLogin(request, env);
-    }
+    if (request.method === "GET" && url.pathname === "/auth/kakao/callback") return completeKakaoLogin(request, env);
 
     return worker.fetch(request, env);
   },
