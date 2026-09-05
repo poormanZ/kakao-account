@@ -27,7 +27,7 @@ const securityHeaders = (secure: boolean): Record<string, string> => ({
 });
 
 const appendHeaders = (target: Headers, source: Headers): void => {
-  const sourceWithGetSetCookie = source as Headers & { getSetCookie?: () => string[] };
+  const sourceWithGetCookie = source as Headers & { getSetCookie?: () => string[] };
   const setCookies = sourceWithGetCookie.getSetCookie?.();
 
   if (setCookies) {
