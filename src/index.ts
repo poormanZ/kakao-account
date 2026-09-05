@@ -118,7 +118,11 @@ const parseJsonBody = async (request: Request): Promise<Record<string, unknown> 
   }
 };
 
-export default {
+const cleanupExpiredSessions = async (db: D1Database): Promise<void> => {
+  await db.prepare("DELETE FROM sessions WHERE expires_at <= CURRENT_TIMESTAMP").run();
+};
+
+const worker = {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     const secure = url.protocol === "https:";
@@ -312,4 +316,10 @@ export default {
 
     return json({ error: "Not found" }, { status: 404 }, secure);
   },
+
+  async scheduled(_controller: ScheduledController, env: Env): Promise<void> {
+    await cleanupExpiredSessions(env.DB);
+  },
 };
+
+export default worker;
