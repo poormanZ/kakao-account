@@ -20,6 +20,7 @@
 - [x] `/auth/kakao/callback` 구현
 - [x] authorization code → access token 교환
 - [x] Kakao 사용자 정보 조회
+- [x] Production 실제 Kakao 로그인 검증
 
 ## Phase 3 — 계정/세션
 - [x] users migration
@@ -57,7 +58,7 @@
 ## Phase 7 — 운영
 - [ ] Worker/D1 사용량 모니터링
 - [ ] 오류 로깅/알림
-- [ ] 세션 정리 작업
+- [x] 세션 정리 작업 — 만료 세션 hourly Cron + D1 cleanup
 - [ ] 개인정보 보관/삭제 정책
 - [ ] 무료 한도 초과 대응 계획
 
