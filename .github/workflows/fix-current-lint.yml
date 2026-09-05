@@ -6,7 +6,6 @@ permissions:
   contents: write
 jobs:
   fix:
-    if: contains(github.event.head_commit.message, 'fix: satisfy account deletion lint checks')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
