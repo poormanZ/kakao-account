@@ -1,6 +1,6 @@
 import type { AuthUser } from "./auth";
 
-const esc = (value: string): string => value.replace(/[&<>\"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[char] ?? char));
+const esc = (value: string): string => value.replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[char] ?? char));
 
 export const renderPortalPage = (user: AuthUser | null, best: { max_round: number; last_round_clear_turn: number; remaining_hp: number } | null): Response => {
   const userLabel = user?.nickname ? esc(user.nickname) : user ? `USER #${user.id}` : "GUEST";
