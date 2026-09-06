@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* global process, console, fetch */
 
 const token = process.env.CLOUDFLARE_API_TOKEN;
 const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
