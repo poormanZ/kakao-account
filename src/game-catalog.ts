@@ -25,7 +25,7 @@ export const GAME_CATALOG: GameCatalogItem[] = [
     name: "Reaction Test",
     description: "화면의 신호에 얼마나 빠르게 반응하는지 겨뤄보세요.",
     icon: "⚡",
-    status: "coming_soon",
+    status: "active",
     sort_order: 20,
     ranking_enabled: true,
   },
