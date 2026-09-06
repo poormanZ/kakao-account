@@ -65,12 +65,18 @@ Click Rush:
 ## 6. 첫 번째 미니게임 — Click Rush
 
 ### 플레이 흐름
-1. `1분 / 3분 / 5분` 중 플레이 시간을 선택한다.
+1. `20초 / 40초 / 60초` 중 플레이 시간을 선택한다.
 2. 게임 시작 후 제한 시간이 감소한다.
 3. 게임 영역 안에 타겟이 나타난다.
 4. 타겟 클릭 시 점수를 얻고 타겟 위치가 변경된다.
 5. 빈 곳 클릭은 빗나간 클릭으로 처리한다.
 6. 시간이 0이 되면 자동 종료하고 결과를 표시한다.
+
+### 게임 HUD
+- 남은 시간
+- 현재 점수
+- 현재 콤보
+- 최고 콤보
 
 ### 점수 규칙
 - 타겟 적중: `+10점`
@@ -103,15 +109,15 @@ Click Rush:
 Click Rush 랭킹은 `duration`별로 독립 관리한다.
 
 ```text
+click-rush / 20s
+click-rush / 40s
 click-rush / 60s
-click-rush / 180s
-click-rush / 300s
 ```
 
 현재 API:
-- `GET /api/games/click-rush/ranking?duration=60|180|300`
-- `GET /api/games/click-rush/my-rank?duration=60|180|300`
-- `GET /api/games/click-rush/best?duration=60|180|300`
+- `GET /api/games/click-rush/ranking?duration=20|40|60`
+- `GET /api/games/click-rush/my-rank?duration=20|40|60`
+- `GET /api/games/click-rush/best?duration=20|40|60`
 - `POST /api/games/click-rush/scores`
 
 랭킹은 사용자별 해당 시간대 최고 점수를 기준으로 상위 100명을 반환한다. 동점은 먼저 기록한 사용자를 우선한다.
@@ -210,7 +216,7 @@ ranking_enabled
 5. ~~Click Rush 점수 스키마~~
 6. ~~점수 저장 API 및 서버 검증~~
 7. ~~랭킹 API/페이지~~
-8. Game D1 binding 분리 구현
+8. ~~Game D1 binding 분리 구현~~
 9. 실제 카카오 로그인 사용자 통합 테스트
 10. 기존 Account D1 legacy game_scores 데이터 이전
 11. 두 번째 게임 추가
