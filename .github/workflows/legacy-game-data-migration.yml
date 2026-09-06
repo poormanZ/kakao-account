@@ -1,0 +1,53 @@
+name: Legacy Game Data Migration
+
+on:
+  workflow_dispatch:
+    inputs:
+      cleanup_legacy:
+        description: "Drop the legacy Account D1 game_scores table after verification"
+        required: true
+        type: boolean
+        default: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    permissions:
+      contents: read
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PRODUCTION_D1_DATABASE_ID: ${{ secrets.PRODUCTION_D1_DATABASE_ID }}
+      PRODUCTION_GAME_D1_DATABASE_ID: ${{ secrets.PRODUCTION_GAME_D1_DATABASE_ID }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Validate production configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          : "${CLOUDFLARE_API_TOKEN:?CLOUDFLARE_API_TOKEN secret is required}"
+          : "${CLOUDFLARE_ACCOUNT_ID:?CLOUDFLARE_ACCOUNT_ID secret is required}"
+          : "${PRODUCTION_D1_DATABASE_ID:?PRODUCTION_D1_DATABASE_ID secret is required}"
+          : "${PRODUCTION_GAME_D1_DATABASE_ID:?PRODUCTION_GAME_D1_DATABASE_ID secret is required}"
+
+      - name: Apply Game D1 migration
+        run: npx wrangler d1 migrations apply kakao-account-game-db --remote
+
+      - name: Dry-run legacy migration
+        run: node scripts/migrate-legacy-game-scores.mjs --dry-run
+
+      - name: Migrate legacy scores
+        run: node scripts/migrate-legacy-game-scores.mjs ${{ inputs.cleanup_legacy && '--cleanup' || '' }}

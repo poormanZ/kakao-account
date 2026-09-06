@@ -138,9 +138,11 @@ Account DB:
 - users
 - sessions
 - user_settings
+- 기존 MVP legacy `game_scores` (마이그레이션 완료 후 제거 대상)
 
 Game DB:
 - game_scores
+- legacy_game_scores (이전 데이터 보존용)
 - 플레이 기록
 - 최고 점수
 - 랭킹
@@ -148,7 +150,18 @@ Game DB:
 
 게임 DB는 `account_user_id`를 계정 플랫폼의 `users.id`와 연결한다. Game DB에는 Account 테이블이나 Kakao 토큰을 복제하지 않는다.
 
-기존 MVP의 `migrations/0003_game_scores.sql`, `0004_click_rush_combo_counts.sql`은 기존 Account D1에 이미 적용된 legacy schema로 남겨두며, 신규 배포 구조에서는 `migrations-game/`의 전용 마이그레이션과 `GAME_DB` binding을 사용한다. 기존 데이터가 있는 환경에서 Game DB로 이전할 때에는 별도의 데이터 마이그레이션을 수행한다.
+기존 MVP의 `migrations/0003_game_scores.sql`, `0004_click_rush_combo_counts.sql`은 기존 Account D1에 이미 적용된 legacy schema다. 신규 런타임은 `migrations-game/`의 전용 마이그레이션과 `GAME_DB` binding을 사용한다.
+
+### Legacy 데이터 이전 정책
+
+기존 Account D1 `game_scores`는 Game D1로 이전한 뒤 제거한다.
+
+- 모든 legacy 기록은 `legacy_game_scores`에 원본 `id`를 기준으로 보존한다.
+- 기존 60초 Click Rush 기록은 현재 활성 `game_scores`에도 `legacy_source_id`를 연결하여 이전한다.
+- 기존 180초/300초 기록은 현재 게임 규칙에 존재하지 않으므로 활성 랭킹에는 넣지 않고 `legacy_game_scores`에만 보존한다.
+- 이전 스크립트는 중복 실행해도 `source_id`/`legacy_source_id` 기준으로 중복 생성하지 않는다.
+- 검증이 완료되기 전에는 Account D1의 legacy 테이블을 삭제하지 않는다.
+- 삭제는 `Legacy Game Data Migration` workflow에서 명시적으로 `cleanup_legacy=true`를 선택한 경우에만 수행한다.
 
 ## 10. 게임 카탈로그
 
@@ -189,11 +202,12 @@ ranking_enabled
 - [x] 개인 최고 점수 API
 - [x] 전체 랭킹 API/페이지
 - [x] Game DB binding 분리 구현
-- [ ] 실제 카카오 로그인 사용자 통합 테스트
+- [x] 실제 카카오 로그인 사용자 통합 테스트 및 Production 검증
 - [ ] 기존 Account D1의 legacy game_scores 데이터 이전
+- [ ] 이전 검증 후 Account D1 legacy game_scores 제거
 
 ### Phase C — 확장
-- [ ] 게임 추가
+- [ ] 두 번째 게임 추가
 - [ ] 카탈로그 관리
 - [ ] 기간/시즌 랭킹
 - [ ] 서버 점수 검증 강화
@@ -217,6 +231,7 @@ ranking_enabled
 6. ~~점수 저장 API 및 서버 검증~~
 7. ~~랭킹 API/페이지~~
 8. ~~Game D1 binding 분리 구현~~
-9. 실제 카카오 로그인 사용자 통합 테스트
-10. 기존 Account D1 legacy game_scores 데이터 이전
-11. 두 번째 게임 추가
+9. ~~실제 카카오 로그인 사용자 통합 테스트~~
+10. Legacy Account D1 데이터를 Game D1로 이전
+11. 이전 결과 검증 후 Account D1 legacy 테이블 제거
+12. 두 번째 게임 추가
