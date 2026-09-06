@@ -8,6 +8,12 @@ database_name = "kakao-account-db"
 database_id = "REPLACE_WITH_PRODUCTION_D1_DATABASE_ID"
 migrations_dir = "migrations"
 
+[[d1_databases]]
+binding = "GAME_DB"
+database_name = "kakao-account-game-db"
+database_id = "REPLACE_WITH_PRODUCTION_GAME_D1_DATABASE_ID"
+migrations_dir = "migrations-game"
+
 [vars]
 APP_BASE_URL = "REPLACE_WITH_PRODUCTION_APP_BASE_URL"
 KAKAO_REDIRECT_URI = "REPLACE_WITH_PRODUCTION_KAKAO_REDIRECT_URI"
