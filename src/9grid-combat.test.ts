@@ -1,20 +1,30 @@
 import { describe, expect, it } from "vitest";
-import { createCard, findBoardSynergy } from "./9grid";
-import { calculateCombat, calculateCombatStats } from "./9grid-combat";
+import { findBoardSynergy } from "./9grid";
+import { calculateCombat } from "./9grid-combat";
 
-const line = (element: "fire" | "water" | "wind" | "earth", job: "tank" | "warrior" | "healer" | "mage") =>
-  Array.from({ length: 3 }, (_, index) => createCard(`${element}-${job}-${index}`, element, job));
+function line(element: "fire" | "water" | "wind" | "earth", job: "tank" | "warrior" | "healer" | "mage") {
+  return [
+    { id: "1", element, job },
+    { id: "2", element, job },
+    { id: "3", element, job },
+  ];
+}
 
 describe("9Grid combat", () => {
   it("converts each active element/job line into combat stats", () => {
     const board = [...line("fire", "warrior"), ...Array(6).fill(null)];
-    const synergy = findBoardSynergy(board);
-    const stats = calculateCombatStats(synergy);
+    const result = calculateCombat({
+      synergy: findBoardSynergy(board),
+      playerHp: 100,
+      playerMaxHp: 100,
+      monsterHp: 100,
+      monsterAttack: 20,
+      critRoll: 1,
+    });
 
-    expect(synergy.elements.fire).toBe(1);
-    expect(synergy.jobs.warrior).toBe(1);
-    expect(stats.attack).toBe(24);
-    expect(stats.critChance).toBeCloseTo(0.15);
+    expect(result.playerStats.attack).toBe(24);
+    expect(result.playerStats.critChance).toBeCloseTo(0.15);
+    expect(result.playerStats.skillDamage).toBe(3);
   });
 
   it("applies crit damage to attack and skill damage when the roll is below crit chance", () => {
@@ -24,7 +34,8 @@ describe("9Grid combat", () => {
       playerHp: 100,
       playerMaxHp: 100,
       monsterHp: 100,
-      critRoll: 0,
+      monsterAttack: 0,
+      critRoll: 0.1,
     });
 
     expect(result.playerDamage).toBe(54);
@@ -35,9 +46,10 @@ describe("9Grid combat", () => {
     const board = [...line("fire", "warrior"), ...Array(6).fill(null)];
     const result = calculateCombat({
       synergy: findBoardSynergy(board),
-      playerHp: 50,
+      playerHp: 100,
       playerMaxHp: 100,
-      monsterHp: 20,
+      monsterHp: 10,
+      monsterAttack: 20,
       critRoll: 1,
     });
 
@@ -60,7 +72,7 @@ describe("9Grid combat", () => {
     expect(result.playerStats.defense).toBe(6);
     expect(result.healing).toBe(8);
     expect(result.shieldGained).toBe(12);
-    expect(result.playerHpAfter).toBe(100);
+    expect(result.playerHpAfter).toBe(93);
   });
 
   it("marks game defeat when the post-combat hp reaches zero", () => {
@@ -71,6 +83,7 @@ describe("9Grid combat", () => {
       playerMaxHp: 100,
       monsterHp: 100,
       monsterAttack: 20,
+      critRoll: 1,
     });
 
     expect(result.playerHpAfter).toBe(0);
