@@ -9,18 +9,26 @@ CREATE TABLE IF NOT EXISTS game_scores_v3 (
   clicks INTEGER NOT NULL,
   misses INTEGER NOT NULL,
   max_combo INTEGER NOT NULL,
+  combo5_count INTEGER NOT NULL DEFAULT 0,
+  combo10_count INTEGER NOT NULL DEFAULT 0,
+  combo20_count INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CHECK (duration_seconds IN (20, 40, 60)),
   CHECK (score >= 0),
   CHECK (clicks >= 0),
   CHECK (misses >= 0),
-  CHECK (max_combo >= 0)
+  CHECK (max_combo >= 0),
+  CHECK (combo5_count >= 0),
+  CHECK (combo10_count >= 0),
+  CHECK (combo20_count >= 0)
 );
 
 INSERT INTO game_scores_v3 (
-  id, game_slug, account_user_id, duration_seconds, score, clicks, misses, max_combo, created_at
+  id, game_slug, account_user_id, duration_seconds, score, clicks, misses, max_combo,
+  combo5_count, combo10_count, combo20_count, created_at
 )
-SELECT id, game_slug, account_user_id, duration_seconds, score, clicks, misses, max_combo, created_at
+SELECT id, game_slug, account_user_id, duration_seconds, score, clicks, misses, max_combo,
+  combo5_count, combo10_count, combo20_count, created_at
 FROM game_scores
 WHERE duration_seconds = 60;
 
