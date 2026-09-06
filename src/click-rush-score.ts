@@ -38,7 +38,9 @@ export const validateClickRushSubmission = (value: unknown): ValidatedClickRushS
 
   if (!isInteger(duration) || !CLICK_RUSH_DURATIONS.includes(duration as ClickRushDuration)) return null;
   if (![clicks, misses, maxCombo, combo5, combo10, combo20].every(isInteger)) return null;
-  if ([clicks, misses, maxCombo, combo5, combo10, combo20].some((value) => value < 0)) return null;
+
+  const numeric = [clicks, misses, maxCombo, combo5, combo10, combo20] as number[];
+  if (numeric.some((item) => item < 0)) return null;
   if (clicks > duration * 30 || misses > duration * 30) return null;
   if (maxCombo > clicks) return null;
   if (combo10 > combo5 || combo20 > combo10) return null;
@@ -46,7 +48,7 @@ export const validateClickRushSubmission = (value: unknown): ValidatedClickRushS
   if (combo10 > Math.floor(clicks / 10)) return null;
   if (combo20 > Math.floor(clicks / 20)) return null;
 
-  return {
+  const submission: ClickRushSubmission = {
     duration_seconds: duration,
     clicks,
     misses,
@@ -54,14 +56,6 @@ export const validateClickRushSubmission = (value: unknown): ValidatedClickRushS
     combo5_count: combo5,
     combo10_count: combo10,
     combo20_count: combo20,
-    score: calculateClickRushScore({
-      duration_seconds: duration,
-      clicks,
-      misses,
-      max_combo: maxCombo,
-      combo5_count: combo5,
-      combo10_count: combo10,
-      combo20_count: combo20,
-    }),
   };
+  return { ...submission, score: calculateClickRushScore(submission) };
 };
