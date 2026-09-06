@@ -15,8 +15,8 @@ const fireWarrior = (id: string) => createCard(id, "fire", "warrior");
 
 const filledBoard = () => [
   fireWarrior("a"), fireWarrior("b"), fireWarrior("c"),
-  createCard("d", "water", "tank"), createCard("e", "wind", "healer"), createCard("f", "earth", "mage"),
-  createCard("g", "water", "tank"), createCard("h", "wind", "healer"), createCard("i", "earth", "mage"),
+  createCard("d", "water", "warrior"), createCard("e", "wind", "healer"), createCard("f", "earth", "mage"),
+  createCard("g", "earth", "warrior"), createCard("h", "wind", "tank"), createCard("i", "water", "mage"),
 ];
 
 describe("9Grid core state", () => {
@@ -55,7 +55,7 @@ describe("9Grid core state", () => {
 
   it("detects horizontal and vertical element/job synergies", () => {
     const result = findBoardSynergy(filledBoard());
-    expect(result.lines).toHaveLength(3);
+    expect(result.lines).toHaveLength(2);
     expect(result.lines[0]).toMatchObject({ axis: "row", index: 0, element: "fire", job: "warrior" });
     expect(result.elements.fire).toBe(1);
     expect(result.jobs.warrior).toBe(1);
