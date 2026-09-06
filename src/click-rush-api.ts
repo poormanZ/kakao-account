@@ -27,13 +27,14 @@ const json = (data: unknown, status = 200): Response => Response.json(data, {
 const isConstraintError = (error: unknown): boolean => error instanceof Error && /constraint|check/i.test(error.message);
 
 export const submitClickRushScore = async (
-  db: D1Database,
+  db: D1Database | undefined,
   user: AuthUser | null,
   body: unknown,
 ): Promise<Response> => {
   if (!user) return json({ error: "Unauthorized" }, 401);
   const submission = validateClickRushSubmission(body);
   if (!submission) return json({ error: "Invalid score submission" }, 400);
+  if (!db) return json({ error: "Game service unavailable" }, 503);
 
   try {
     await db.prepare(
@@ -73,12 +74,13 @@ export const submitClickRushScore = async (
 };
 
 export const getClickRushBest = async (
-  db: D1Database,
+  db: D1Database | undefined,
   user: AuthUser | null,
   duration: number,
 ): Promise<Response> => {
   if (!user) return json({ error: "Unauthorized" }, 401);
   if (![60, 180, 300].includes(duration)) return json({ error: "Invalid duration" }, 400);
+  if (!db) return json({ error: "Game service unavailable" }, 503);
   const best = await db.prepare(
     `SELECT score, clicks, misses, max_combo, created_at
      FROM game_scores
@@ -88,8 +90,9 @@ export const getClickRushBest = async (
   return json({ duration_seconds: duration, best: best ?? null });
 };
 
-export const getClickRushRanking = async (db: D1Database, duration: number): Promise<Response> => {
+export const getClickRushRanking = async (db: D1Database | undefined, duration: number): Promise<Response> => {
   if (![60, 180, 300].includes(duration)) return json({ error: "Invalid duration" }, 400);
+  if (!db) return json({ error: "Game service unavailable" }, 503);
   const rows = await db.prepare(
     `SELECT u.nickname, MAX(gs.score) AS score, MIN(gs.created_at) AS created_at
      FROM game_scores gs JOIN users u ON u.id = gs.account_user_id
@@ -107,9 +110,10 @@ export const getClickRushRanking = async (db: D1Database, duration: number): Pro
   return json({ game: "click-rush", duration_seconds: duration, ranking });
 };
 
-export const getClickRushUserRank = async (db: D1Database, user: AuthUser | null, duration: number): Promise<Response> => {
+export const getClickRushUserRank = async (db: D1Database | undefined, user: AuthUser | null, duration: number): Promise<Response> => {
   if (!user) return json({ error: "Unauthorized" }, 401);
   if (![60, 180, 300].includes(duration)) return json({ error: "Invalid duration" }, 400);
+  if (!db) return json({ error: "Game service unavailable" }, 503);
   const best = await db.prepare(
     `SELECT MAX(score) AS score
      FROM game_scores WHERE game_slug = ? AND account_user_id = ? AND duration_seconds = ?`,
