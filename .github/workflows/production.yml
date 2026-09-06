@@ -14,6 +14,7 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       PRODUCTION_D1_DATABASE_ID: ${{ secrets.PRODUCTION_D1_DATABASE_ID }}
+      PRODUCTION_GAME_D1_DATABASE_ID: ${{ secrets.PRODUCTION_GAME_D1_DATABASE_ID }}
       PRODUCTION_KAKAO_REST_API_KEY: ${{ secrets.PRODUCTION_KAKAO_REST_API_KEY }}
       PRODUCTION_KAKAO_CLIENT_SECRET: ${{ secrets.PRODUCTION_KAKAO_CLIENT_SECRET }}
     steps:
@@ -44,6 +45,7 @@ jobs:
           : "${CLOUDFLARE_API_TOKEN:?CLOUDFLARE_API_TOKEN secret is required}"
           : "${CLOUDFLARE_ACCOUNT_ID:?CLOUDFLARE_ACCOUNT_ID secret is required}"
           : "${PRODUCTION_D1_DATABASE_ID:?PRODUCTION_D1_DATABASE_ID secret is required}"
+          : "${PRODUCTION_GAME_D1_DATABASE_ID:?PRODUCTION_GAME_D1_DATABASE_ID secret is required}"
           : "${PRODUCTION_KAKAO_REST_API_KEY:?PRODUCTION_KAKAO_REST_API_KEY secret is required}"
           : "${PRODUCTION_KAKAO_CLIENT_SECRET:?PRODUCTION_KAKAO_CLIENT_SECRET secret is required}"
 
@@ -60,6 +62,7 @@ jobs:
           set -euo pipefail
           sed \
             -e "s#REPLACE_WITH_PRODUCTION_D1_DATABASE_ID#${PRODUCTION_D1_DATABASE_ID}#" \
+            -e "s#REPLACE_WITH_PRODUCTION_GAME_D1_DATABASE_ID#${PRODUCTION_GAME_D1_DATABASE_ID}#" \
             -e "s#REPLACE_WITH_PRODUCTION_APP_BASE_URL#https://placeholder.invalid#" \
             -e "s#REPLACE_WITH_PRODUCTION_KAKAO_REDIRECT_URI#https://placeholder.invalid/auth/kakao/callback#" \
             wrangler.production.toml.example > wrangler.production.toml
@@ -84,12 +87,16 @@ jobs:
           set -euo pipefail
           sed \
             -e "s#REPLACE_WITH_PRODUCTION_D1_DATABASE_ID#${PRODUCTION_D1_DATABASE_ID}#" \
+            -e "s#REPLACE_WITH_PRODUCTION_GAME_D1_DATABASE_ID#${PRODUCTION_GAME_D1_DATABASE_ID}#" \
             -e "s#REPLACE_WITH_PRODUCTION_APP_BASE_URL#${PRODUCTION_APP_BASE_URL}#" \
             -e "s#REPLACE_WITH_PRODUCTION_KAKAO_REDIRECT_URI#${PRODUCTION_KAKAO_REDIRECT_URI}#" \
             wrangler.production.toml.example > wrangler.production.toml
 
-      - name: Apply production D1 migrations
+      - name: Apply production Account D1 migrations
         run: npx wrangler d1 migrations apply kakao-account-db --remote --config wrangler.production.toml
+
+      - name: Apply production Game D1 migrations
+        run: npx wrangler d1 migrations apply kakao-account-game-db --remote --config wrangler.production.toml
 
       - name: Deploy production Worker with final URL and secrets
         run: npx wrangler deploy --config wrangler.production.toml --secrets-file production-secrets.json
