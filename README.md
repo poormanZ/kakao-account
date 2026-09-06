@@ -23,6 +23,9 @@
 - [시스템 설계](docs/architecture.md)
 - [데이터베이스 설계](docs/database.md)
 - [카카오 로그인 설계](docs/kakao-login.md)
+- [서비스 연동 API](docs/api.md)
+- [미니게임 포털 기획](docs/portal-plan.md)
+- [서비스별 데이터 모델](docs/service-data.md)
 - [로드맵](docs/roadmap.md)
 
 ## 로컬 시작
@@ -37,4 +40,4 @@
 
 ## 현재 상태
 
-Phase 0 설계 완료 및 Phase 1 기반 코드/Phase 2 Kakao OAuth 흐름 구현 완료. 다음 단계는 D1 실제 생성/연결 확인 후 사용자 계정 생성과 내부 세션 발급을 구현하는 것이다.
+Account API 및 기본 웹 계정 페이지 구현이 완료되었으며, 다음 단계는 미니게임 포털과 첫 번째 미니게임/랭킹 서비스를 구현하는 것이다.
