@@ -17,7 +17,7 @@ describe("9Grid combat", () => {
     expect(stats.critChance).toBeCloseTo(0.15);
   });
 
-  it("applies crit damage when the deterministic roll is below crit chance", () => {
+  it("applies crit damage to attack and skill damage when the roll is below crit chance", () => {
     const board = [...line("fire", "warrior"), ...Array(6).fill(null)];
     const result = calculateCombat({
       synergy: findBoardSynergy(board),
@@ -27,8 +27,8 @@ describe("9Grid combat", () => {
       critRoll: 0,
     });
 
-    expect(result.playerDamage).toBe(48);
-    expect(result.monsterHpAfter).toBe(52);
+    expect(result.playerDamage).toBe(54);
+    expect(result.monsterHpAfter).toBe(46);
   });
 
   it("ends the exchange immediately when the monster is defeated", () => {
@@ -57,8 +57,8 @@ describe("9Grid combat", () => {
     });
 
     expect(result.playerStats.damageReduction).toBeCloseTo(0.2);
-    expect(result.playerStats.defense).toBe(10);
-    expect(result.healing).toBe(20);
+    expect(result.playerStats.defense).toBe(6);
+    expect(result.healing).toBe(8);
     expect(result.shieldGained).toBe(12);
     expect(result.playerHpAfter).toBe(100);
   });
