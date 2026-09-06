@@ -35,9 +35,9 @@ export const getReactionTestBest = async (db: D1Database | undefined, user: Auth
 export const getReactionTestUserRank = async (db: D1Database | undefined, user: AuthUser | null): Promise<Response> => {
   if (!user) return json({ error: "Unauthorized" }, 401);
   if (!db) return json({ error: "Game service unavailable" }, 503);
-  const best = await db.prepare("SELECT average_ms FROM reaction_test_scores WHERE account_user_id = ? ORDER BY average_ms ASC, created_at ASC, id ASC LIMIT 1").bind(user.id).first<{ average_ms: number }>();
+  const best = await db.prepare("SELECT average_ms, created_at FROM reaction_test_scores WHERE account_user_id = ? ORDER BY average_ms ASC, created_at ASC, id ASC LIMIT 1").bind(user.id).first<{ average_ms: number; created_at: string }>();
   if (!best) return json({ game: "reaction", rank: null, average_ms: null });
-  const rank = await db.prepare("SELECT COUNT(*) + 1 AS rank FROM (SELECT account_user_id, MIN(average_ms) AS average_ms FROM reaction_test_scores GROUP BY account_user_id) ranked WHERE average_ms < ?").bind(best.average_ms).first<{ rank: number }>();
+  const rank = await db.prepare(`WITH ranked AS (SELECT account_user_id, average_ms, created_at, ROW_NUMBER() OVER (PARTITION BY account_user_id ORDER BY average_ms ASC, created_at ASC, id ASC) AS rn FROM reaction_test_scores), best_scores AS (SELECT account_user_id, average_ms, created_at FROM ranked WHERE rn = 1) SELECT COUNT(*) + 1 AS rank FROM best_scores WHERE average_ms < ? OR (average_ms = ? AND created_at < ?) OR (average_ms = ? AND created_at = ? AND account_user_id < ?)`).bind(best.average_ms, best.average_ms, best.created_at, best.average_ms, best.created_at, user.id).first<{ rank: number }>();
   return json({ game: "reaction", rank: rank?.rank ?? null, average_ms: best.average_ms });
 };
 
