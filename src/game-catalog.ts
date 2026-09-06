@@ -12,6 +12,15 @@ export interface GameCatalogItem {
 
 export const GAME_CATALOG: GameCatalogItem[] = [
   {
+    slug: "9grid",
+    name: "9Grid",
+    description: "3×3 보드에 카드를 배치하고 시너지를 만들어 몬스터를 처치하세요.",
+    icon: "▦",
+    status: "active",
+    sort_order: 5,
+    ranking_enabled: true,
+  },
+  {
     slug: "click-rush",
     name: "Click Rush",
     description: "제한 시간 안에 움직이는 타겟을 최대한 많이 클릭하세요.",
