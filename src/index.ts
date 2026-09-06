@@ -1,6 +1,7 @@
 import { getAuthenticatedUser, getCookie, getSessionUser, hashSessionId, type AuthUser } from "./auth";
 import { render9GridPage } from "./9grid-ui";
 import { get9GridBestScore, get9GridMyRank, get9GridRanking, save9GridScore } from "./9grid-score";
+import { renderPortalPage } from "./portal-ui";
 import { logError, logInfo, logWarn } from "./logger";
 
 export interface Env {
@@ -98,11 +99,7 @@ const parseSettingKey = (pathname: string): string | null => {
 const parseJsonBody = async (request: Request): Promise<Record<string, unknown> | null> => {
   const contentType = request.headers.get("Content-Type")?.split(";", 1)[0].trim().toLowerCase();
   if (contentType !== "application/json") return null;
-  try {
-    const body = await request.json();
-    if (!body || typeof body !== "object" || Array.isArray(body)) return null;
-    return body as Record<string, unknown>;
-  } catch { return null; }
+  try { const body = await request.json(); if (!body || typeof body !== "object" || Array.isArray(body)) return null; return body as Record<string, unknown>; } catch { return null; }
 };
 
 const cleanupExpiredSessions = async (db: D1Database): Promise<void> => {
@@ -117,7 +114,18 @@ const worker = {
     const context = { request_id: requestId, route: url.pathname, method: request.method };
 
     if (request.method === "GET" && url.pathname === "/health") return json({ status: "ok", service: "kakao-account-api" }, {}, secure);
-    if (request.method === "GET" && url.pathname === "/") return json({ service: "kakao-account-api", status: "ready" }, {}, secure);
+    if (request.method === "GET" && url.pathname === "/") {
+      let user: UserRow | null = null;
+      try { user = await getAuthenticatedUser(request, env.DB, SESSION_COOKIE); } catch (error) { logError("portal.user_lookup_failed", error, context); }
+      let best: { max_round: number; last_round_clear_turn: number; remaining_hp: number } | null = null;
+      if (user) {
+        try {
+          const response = await get9GridBestScore(env, user);
+          if (response.ok) { const body = await response.json() as { score?: { max_round: number; last_round_clear_turn: number; remaining_hp: number } | null }; best = body.score ?? null; }
+        } catch (error) { logError("portal.9grid_best_lookup_failed", error, context); }
+      }
+      return renderPortalPage(user, best);
+    }
 
     if (request.method === "GET" && url.pathname === "/9grid") {
       let user: UserRow | null = null;
@@ -133,10 +141,7 @@ const worker = {
       if (request.method === "POST" && url.pathname === "/api/games/9grid/scores") return save9GridScore(request, env, user);
       if (request.method === "GET" && url.pathname === "/api/games/9grid/best") return get9GridBestScore(env, user);
       if (request.method === "GET" && url.pathname === "/api/games/9grid/my-rank") return get9GridMyRank(env, user);
-      if (request.method === "GET" && url.pathname === "/api/games/9grid/ranking") {
-        const rawLimit = Number(url.searchParams.get("limit") ?? "20");
-        return get9GridRanking(env, Number.isFinite(rawLimit) ? rawLimit : 20);
-      }
+      if (request.method === "GET" && url.pathname === "/api/games/9grid/ranking") { const rawLimit = Number(url.searchParams.get("limit") ?? "20"); return get9GridRanking(env, Number.isFinite(rawLimit) ? rawLimit : 20); }
       return json({ error: "Not found" }, { status: 404 }, secure);
     }
 
@@ -176,26 +181,19 @@ const worker = {
         const sessionId = await createSession(env.DB, user.id);
         headers.append("Set-Cookie", sessionCookie(sessionId, secure));
         return json({ authenticated: true, provider: "kakao", user: { id: user.id } }, { headers }, secure);
-      } catch (error) {
-        logError("kakao.authentication_exception", error, context);
-        return json({ error: "Kakao authentication failed" }, { status: 502, headers }, secure);
-      }
+      } catch (error) { logError("kakao.authentication_exception", error, context); return json({ error: "Kakao authentication failed" }, { status: 502, headers }, secure); }
     }
 
     if (request.method === "GET" && url.pathname === "/api/me") {
       const sessionId = getCookie(request, SESSION_COOKIE);
       if (!sessionId) return json({ error: "Unauthorized" }, { status: 401 }, secure);
-      try {
-        const user = await getSessionUser(env.DB, sessionId);
-        if (!user) return json({ error: "Unauthorized" }, { status: 401, headers: { "Set-Cookie": clearCookie(SESSION_COOKIE, secure) } }, secure);
-        return json({ authenticated: true, user: { id: user.id, nickname: user.nickname, profile_image_url: user.profile_image_url } }, {}, secure);
-      } catch (error) { logError("auth.session_lookup_failed", error, context); return json({ error: "Authentication service unavailable" }, { status: 503 }, secure); }
+      try { const user = await getSessionUser(env.DB, sessionId); if (!user) return json({ error: "Unauthorized" }, { status: 401, headers: { "Set-Cookie": clearCookie(SESSION_COOKIE, secure) } }, secure); return json({ authenticated: true, user: { id: user.id, nickname: user.nickname, profile_image_url: user.profile_image_url } }, {}, secure); }
+      catch (error) { logError("auth.session_lookup_failed", error, context); return json({ error: "Authentication service unavailable" }, { status: 503 }, secure); }
     }
 
     if (request.method === "DELETE" && url.pathname === "/api/account") {
       let user: UserRow | null;
-      try { user = await getAuthenticatedUser(request, env.DB, SESSION_COOKIE); }
-      catch (error) { logError("auth.account_delete_user_lookup_failed", error, context); return json({ error: "Authentication service unavailable" }, { status: 503 }, secure); }
+      try { user = await getAuthenticatedUser(request, env.DB, SESSION_COOKIE); } catch (error) { logError("auth.account_delete_user_lookup_failed", error, context); return json({ error: "Authentication service unavailable" }, { status: 503 }, secure); }
       if (!user) return json({ error: "Unauthorized" }, { status: 401 }, secure);
       const body = await parseJsonBody(request);
       if (body?.confirmation !== "DELETE") return json({ error: "Account deletion requires confirmation" }, { status: 400 }, secure);
@@ -205,25 +203,17 @@ const worker = {
 
     if (url.pathname === "/api/settings" || url.pathname.startsWith("/api/settings/")) {
       let user: UserRow | null;
-      try { user = await getAuthenticatedUser(request, env.DB, SESSION_COOKIE); }
-      catch (error) { logError("auth.settings_user_lookup_failed", error, context); return json({ error: "Authentication service unavailable" }, { status: 503 }, secure); }
+      try { user = await getAuthenticatedUser(request, env.DB, SESSION_COOKIE); } catch (error) { logError("auth.settings_user_lookup_failed", error, context); return json({ error: "Authentication service unavailable" }, { status: 503 }, secure); }
       if (!user) return json({ error: "Unauthorized" }, { status: 401 }, secure);
       if (request.method === "GET" && url.pathname === "/api/settings") {
-        try {
-          const result = await env.DB.prepare(`SELECT setting_key, setting_value FROM user_settings WHERE user_id = ? ORDER BY setting_key`).bind(user.id).all<SettingRow>();
-          const settings: Record<string, string> = {};
-          for (const row of result.results) settings[row.setting_key] = row.setting_value;
-          return json({ settings }, {}, secure);
-        } catch (error) { logError("settings.list_failed", error, context); return json({ error: "Settings service unavailable" }, { status: 503 }, secure); }
+        try { const result = await env.DB.prepare(`SELECT setting_key, setting_value FROM user_settings WHERE user_id = ? ORDER BY setting_key`).bind(user.id).all<SettingRow>(); const settings: Record<string, string> = {}; for (const row of result.results) settings[row.setting_key] = row.setting_value; return json({ settings }, {}, secure); }
+        catch (error) { logError("settings.list_failed", error, context); return json({ error: "Settings service unavailable" }, { status: 503 }, secure); }
       }
       const key = parseSettingKey(url.pathname);
       if (!key) return json({ error: "Invalid setting key" }, { status: 400 }, secure);
       if (request.method === "GET") {
-        try {
-          const row = await env.DB.prepare(`SELECT setting_key, setting_value FROM user_settings WHERE user_id = ? AND setting_key = ? LIMIT 1`).bind(user.id, key).first<SettingRow>();
-          if (!row) return json({ error: "Setting not found" }, { status: 404 }, secure);
-          return json({ key: row.setting_key, value: row.setting_value }, {}, secure);
-        } catch (error) { logError("settings.get_failed", error, context); return json({ error: "Settings service unavailable" }, { status: 503 }, secure); }
+        try { const row = await env.DB.prepare(`SELECT setting_key, setting_value FROM user_settings WHERE user_id = ? AND setting_key = ? LIMIT 1`).bind(user.id, key).first<SettingRow>(); if (!row) return json({ error: "Setting not found" }, { status: 404 }, secure); return json({ key: row.setting_key, value: row.setting_value }, {}, secure); }
+        catch (error) { logError("settings.get_failed", error, context); return json({ error: "Settings service unavailable" }, { status: 503 }, secure); }
       }
       if (request.method === "PUT") {
         const body = await parseJsonBody(request);
@@ -240,10 +230,7 @@ const worker = {
 
     if (request.method === "POST" && url.pathname === "/auth/logout") {
       const sessionId = getCookie(request, SESSION_COOKIE);
-      if (sessionId) {
-        try { const sessionHash = await hashSessionId(sessionId); await env.DB.prepare("DELETE FROM sessions WHERE id = ?").bind(sessionHash).run(); }
-        catch (error) { logError("auth.logout_failed", error, context); return json({ error: "Logout service unavailable" }, { status: 503 }, secure); }
-      }
+      if (sessionId) { try { const sessionHash = await hashSessionId(sessionId); await env.DB.prepare("DELETE FROM sessions WHERE id = ?").bind(sessionHash).run(); } catch (error) { logError("auth.logout_failed", error, context); return json({ error: "Logout service unavailable" }, { status: 503 }, secure); } }
       return json({ logged_out: true }, { headers: { "Set-Cookie": clearCookie(SESSION_COOKIE, secure) } }, secure);
     }
 
@@ -251,8 +238,7 @@ const worker = {
   },
 
   async scheduled(_controller: ScheduledController, env: Env): Promise<void> {
-    try { await cleanupExpiredSessions(env.DB); }
-    catch (error) { logError("sessions.cleanup_failed", error, { job: "session_cleanup" }); throw error; }
+    try { await cleanupExpiredSessions(env.DB); } catch (error) { logError("sessions.cleanup_failed", error, { job: "session_cleanup" }); throw error; }
   },
 };
 
