@@ -58,7 +58,7 @@ describe("9Grid core state", () => {
     expect(result.lines).toHaveLength(2);
     expect(result.lines[0]).toMatchObject({ axis: "row", index: 0, element: "fire", job: "warrior" });
     expect(result.elements.fire).toBe(1);
-    expect(result.jobs.warrior).toBe(1);
+    expect(result.jobs.warrior).toBe(2);
     expect(result.lines.some((line) => line.axis === "column")).toBe(true);
   });
 
