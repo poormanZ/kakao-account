@@ -1,4 +1,4 @@
-export const CLICK_RUSH_DURATIONS = [60, 180, 300] as const;
+export const CLICK_RUSH_DURATIONS = [20, 40, 60] as const;
 export type ClickRushDuration = (typeof CLICK_RUSH_DURATIONS)[number];
 
 export interface ClickRushSubmission {
