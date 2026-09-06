@@ -126,9 +126,7 @@ Browser → Game Server → 입력 검증/점수 재계산 → Game DB → Ranki
 
 ## 9. 데이터 소유권
 
-최종 구조에서는 미니게임 전용 테이블을 Account 전용 DB와 분리한다.
-
-현재 MVP에서는 배포/마이그레이션 경로를 검증하기 위해 `game_scores`를 기존 D1에 두고 있다. 다음 단계에서 Game D1 binding으로 분리한다.
+Account와 Game 데이터는 별도의 D1 database binding으로 운영한다.
 
 Account DB:
 - users
@@ -136,12 +134,15 @@ Account DB:
 - user_settings
 
 Game DB:
+- game_scores
 - 플레이 기록
 - 최고 점수
 - 랭킹
 - 게임별 진행 데이터
 
-게임 DB는 `account_user_id`를 계정 플랫폼의 `users.id`와 연결한다.
+게임 DB는 `account_user_id`를 계정 플랫폼의 `users.id`와 연결한다. Game DB에는 Account 테이블이나 Kakao 토큰을 복제하지 않는다.
+
+기존 MVP의 `migrations/0003_game_scores.sql`, `0004_click_rush_combo_counts.sql`은 기존 Account D1에 이미 적용된 legacy schema로 남겨두며, 신규 배포 구조에서는 `migrations-game/`의 전용 마이그레이션과 `GAME_DB` binding을 사용한다. 기존 데이터가 있는 환경에서 Game DB로 이전할 때에는 별도의 데이터 마이그레이션을 수행한다.
 
 ## 10. 게임 카탈로그
 
@@ -181,8 +182,9 @@ ranking_enabled
 - [x] 점수 저장 API
 - [x] 개인 최고 점수 API
 - [x] 전체 랭킹 API/페이지
-- [ ] Game DB binding 분리
+- [x] Game DB binding 분리 구현
 - [ ] 실제 카카오 로그인 사용자 통합 테스트
+- [ ] 기존 Account D1의 legacy game_scores 데이터 이전
 
 ### Phase C — 확장
 - [ ] 게임 추가
@@ -208,6 +210,7 @@ ranking_enabled
 5. ~~Click Rush 점수 스키마~~
 6. ~~점수 저장 API 및 서버 검증~~
 7. ~~랭킹 API/페이지~~
-8. 실제 카카오 로그인 사용자로 통합 테스트
-9. Game D1 binding 분리
-10. 두 번째 게임 추가
+8. Game D1 binding 분리 구현
+9. 실제 카카오 로그인 사용자 통합 테스트
+10. 기존 Account D1 legacy game_scores 데이터 이전
+11. 두 번째 게임 추가
