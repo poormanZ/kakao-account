@@ -61,12 +61,17 @@ export function validateReactionTestSubmission(
     throw new Error("invalid_reaction_times");
   }
 
+  const validatedRoundCount = roundCount;
+  const validatedSuccessfulRounds = successfulRounds;
+  const validatedFalseStarts = falseStarts;
+  const validatedTimeouts = timeouts;
+
   return {
-    round_count: roundCount,
-    successful_rounds: successfulRounds,
+    round_count: validatedRoundCount,
+    successful_rounds: validatedSuccessfulRounds,
     reaction_times: reactionTimes,
-    false_starts: falseStarts,
-    timeouts,
+    false_starts: validatedFalseStarts,
+    timeouts: validatedTimeouts,
   };
 }
 
