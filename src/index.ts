@@ -3,7 +3,7 @@ import { logError, logInfo, logWarn } from "./logger";
 
 export interface Env {
   DB: D1Database;
-  GAME_DB: D1Database;
+  GAME_DB?: D1Database;
   APP_BASE_URL: string;
   KAKAO_REDIRECT_URI: string;
   KAKAO_REST_API_KEY?: string;
