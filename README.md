@@ -25,7 +25,7 @@
 - [카카오 로그인 설계](docs/kakao-login.md)
 - [서비스 연동 API](docs/api.md)
 - [미니게임 포털 기획](docs/portal-plan.md)
-- [IRO (이로) 게임 개발 기획](docs/iro-plan.md)
+- [9Grid 게임 개발 기획](docs/9grid-plan.md)
 - [서비스별 데이터 모델](docs/service-data.md)
 - [로드맵](docs/roadmap.md)
 
@@ -41,4 +41,4 @@
 
 ## 현재 상태
 
-Account API 및 기본 웹 계정 페이지 구현이 완료되었으며, 미니게임 포털과 Click Rush/Reaction Test 기반이 구축되어 있다. 다음 게임은 3×3 카드 보드 생존 전략 게임 **IRO (이로)**이며 상세 개발 기획은 `docs/iro-plan.md`에 정의한다.
+Account API 및 기본 웹 계정 페이지 구현이 완료되었으며, 미니게임 포털과 Click Rush/Reaction Test 기반이 구축되어 있다. 다음 게임은 3×3 카드 보드 생존 전략 게임 **9Grid**이며 상세 개발 기획은 `docs/9grid-plan.md`에 정의한다.
