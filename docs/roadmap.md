@@ -77,8 +77,8 @@
 - [x] 시너지 계산기 구현 및 테스트
 - [x] 전투 계산기 구현 및 테스트
 - [x] 9턴 라운드 상태 머신 구현
-- [ ] 9Grid 게임 UI 구현
-- [ ] `9grid_scores` migration 및 랭킹 API 구현
+- [x] 9Grid 게임 UI 구현 — `/9grid`
+- [x] `9grid_scores` migration 및 랭킹 API 구현
 - [ ] 포털 9Grid 게임 카드/진입 화면 연동
 - [ ] 실제 플레이 밸런싱 및 UX 검증
 
