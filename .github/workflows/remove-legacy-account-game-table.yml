@@ -1,0 +1,72 @@
+name: Remove Legacy Account Game Table
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  remove-legacy-table:
+    if: github.event.head_commit.message == 'ops: remove legacy Account D1 game_scores table'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    permissions:
+      contents: read
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PRODUCTION_D1_DATABASE_ID: ${{ secrets.PRODUCTION_D1_DATABASE_ID }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Validate production configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          : "${CLOUDFLARE_API_TOKEN:?CLOUDFLARE_API_TOKEN secret is required}"
+          : "${CLOUDFLARE_ACCOUNT_ID:?CLOUDFLARE_ACCOUNT_ID secret is required}"
+          : "${PRODUCTION_D1_DATABASE_ID:?PRODUCTION_D1_DATABASE_ID secret is required}"
+
+      - name: Create temporary Wrangler configuration
+        shell: bash
+        run: |
+          cat > wrangler.migration.toml <<EOF
+          name = "kakao-account-api-legacy-cleanup"
+          main = "src/app.ts"
+          compatibility_date = "2026-09-05"
+
+          [[d1_databases]]
+          binding = "DB"
+          database_name = "kakao-account-db"
+          database_id = "${PRODUCTION_D1_DATABASE_ID}"
+          migrations_dir = "migrations"
+          EOF
+
+      - name: Drop legacy Account D1 game_scores table
+        run: npx wrangler d1 execute kakao-account-db --remote --config wrangler.migration.toml --command "DROP TABLE IF EXISTS game_scores"
+
+      - name: Verify legacy table is absent
+        shell: bash
+        run: |
+          set -euo pipefail
+          result="$(npx wrangler d1 execute kakao-account-db --remote --config wrangler.migration.toml --command "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'game_scores'")"
+          if printf '%s' "$result" | grep -q 'game_scores'; then
+            echo "Legacy Account D1 game_scores table still exists."
+            exit 1
+          fi
+          echo "Verified: legacy Account D1 game_scores table is absent."
+
+      - name: Cleanup temporary files
+        if: always()
+        run: rm -f wrangler.migration.toml
