@@ -43,8 +43,29 @@ jobs:
           : "${PRODUCTION_D1_DATABASE_ID:?PRODUCTION_D1_DATABASE_ID secret is required}"
           : "${PRODUCTION_GAME_D1_DATABASE_ID:?PRODUCTION_GAME_D1_DATABASE_ID secret is required}"
 
+      - name: Create temporary Wrangler configuration
+        shell: bash
+        run: |
+          cat > wrangler.migration.toml <<EOF
+          name = "kakao-account-api-migration"
+          main = "src/app.ts"
+          compatibility_date = "2026-09-05"
+
+          [[d1_databases]]
+          binding = "DB"
+          database_name = "kakao-account-db"
+          database_id = "${PRODUCTION_D1_DATABASE_ID}"
+          migrations_dir = "migrations"
+
+          [[d1_databases]]
+          binding = "GAME_DB"
+          database_name = "kakao-account-game-db"
+          database_id = "${PRODUCTION_GAME_D1_DATABASE_ID}"
+          migrations_dir = "migrations-game"
+          EOF
+
       - name: Apply Game D1 migration
-        run: npx wrangler d1 migrations apply kakao-account-game-db --remote
+        run: npx wrangler d1 migrations apply kakao-account-game-db --remote --config wrangler.migration.toml
 
       - name: Dry-run legacy migration
         run: node scripts/migrate-legacy-game-scores.mjs --dry-run
