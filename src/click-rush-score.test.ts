@@ -2,9 +2,18 @@ import { describe, expect, it } from "vitest";
 import { calculateClickRushScore, validateClickRushSubmission } from "./click-rush-score";
 
 describe("Click Rush score validation", () => {
+  it("accepts the supported 20, 40, and 60 second durations", () => {
+    for (const duration of [20, 40, 60]) {
+      expect(validateClickRushSubmission({
+        duration_seconds: duration, clicks: 1, misses: 0, max_combo: 1,
+        combo5_count: 0, combo10_count: 0, combo20_count: 0,
+      })).not.toBeNull();
+    }
+  });
+
   it("reproduces the client score from audited combo milestones", () => {
     const submission = {
-      duration_seconds: 60,
+      duration_seconds: 20,
       clicks: 20,
       misses: 2,
       max_combo: 20,
@@ -25,7 +34,7 @@ describe("Click Rush score validation", () => {
 
   it("rejects impossible combo milestone counts", () => {
     expect(validateClickRushSubmission({
-      duration_seconds: 60, clicks: 10, misses: 0, max_combo: 10,
+      duration_seconds: 20, clicks: 10, misses: 0, max_combo: 10,
       combo5_count: 3, combo10_count: 1, combo20_count: 0,
     })).toBeNull();
   });
