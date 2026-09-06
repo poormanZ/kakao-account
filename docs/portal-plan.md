@@ -58,6 +58,12 @@ Click Rush:
 /games/click-rush/ranking
 ```
 
+Reaction Test:
+```text
+/games/reaction
+/games/reaction/ranking
+```
+
 ## 5. 게임 화면
 
 공통 상단바 아래에 게임별 콘텐츠를 배치한다. 포털 공통 UI와 게임 UI를 분리하여 새 게임 추가 시 기존 계정/포털 코드를 최소한으로 수정한다.
@@ -122,7 +128,141 @@ click-rush / 60s
 
 랭킹은 사용자별 해당 시간대 최고 점수를 기준으로 상위 100명을 반환한다. 동점은 먼저 기록한 사용자를 우선한다.
 
-## 8. 점수 보안
+## 8. 두 번째 미니게임 — Reaction Test
+
+### 목표
+
+5라운드 동안 화면의 `GO!` 신호에 최대한 빠르게 반응한다. 최종 성능은 **성공 라운드의 평균 반응 시간(ms)** 으로 평가하며, 평균이 낮을수록 높은 순위다.
+
+Click Rush가 제한 시간 동안 반복 클릭하는 **속도/지구력 게임**이라면, Reaction Test는 한 번의 신호에 얼마나 빠르게 반응하는지를 측정하는 **순수 반응속도 게임**으로 차별화한다.
+
+### 기본 규칙
+- 한 게임은 총 `5라운드`다.
+- 각 라운드 시작 후 `1.5~4.0초`의 예측하기 어려운 대기 시간이 지난다.
+- 대기 중에는 `WAIT` 상태를 표시한다.
+- 신호가 나오면 `GO!` 상태로 전환한다.
+- 사용자는 가능한 한 빠르게 게임 영역을 클릭한다.
+- 클릭 순간의 `performance.now()` 기준 경과 시간을 해당 라운드 반응 시간으로 기록한다.
+- `GO!` 이후 `1.5초` 안에 클릭하지 않으면 timeout으로 처리한다.
+- `WAIT` 중 클릭하면 false start로 처리하고 해당 라운드는 실패한다.
+- 라운드 종료 후 결과를 짧게 표시하고 다음 라운드로 진행한다.
+
+### 라운드 상태
+
+```text
+IDLE
+  ↓
+READY
+  ↓
+WAIT ──(클릭)──→ FALSE_START
+  ↓
+GO!
+  ↓
+PLAYER_CLICK ──→ ROUND_RESULT
+  ↓
+ROUND_RESULT ──→ 다음 라운드
+  ↓
+5라운드 완료
+  ↓
+FINAL_RESULT
+```
+
+### 결과 정책
+
+각 라운드는 다음 세 종류 중 하나다.
+
+- 성공: 실제 반응 시간(ms) 기록
+- false start: 대기 중 조기 클릭
+- timeout: GO 이후 제한 시간 내 미응답
+
+최종 평균은 **성공한 라운드의 반응 시간만** 사용한다. 실패 라운드에 임의의 반응 시간을 부여하지 않는다.
+
+랭킹 제출은 최소 `3회 성공`을 요구한다. 3회 미만 성공한 플레이는 결과 화면에서 통계는 보여주되 랭킹 기록으로 저장하지 않는다.
+
+### 성능 등급
+
+| 평균 반응 시간 | 등급 |
+|---:|---|
+| `< 200ms` | PERFECT |
+| `200~249ms` | EXCELLENT |
+| `250~299ms` | GREAT |
+| `300~399ms` | GOOD |
+| `400ms+` | SLOW |
+
+### 결과 화면
+
+- 총 라운드: `5`
+- 성공 라운드 수
+- false start 수
+- timeout 수
+- 평균 반응 시간
+- 최고 반응 시간
+- 성능 등급
+- 다시 플레이
+- 랭킹 보기
+
+### 서버 제출 데이터
+
+클라이언트는 최종 평균을 직접 신뢰하지 않고 라운드 원시 지표를 제출한다.
+
+```text
+round_count
+successful_rounds
+reaction_times
+false_starts
+timeouts
+```
+
+서버가 `reaction_times`의 유효 범위와 개수, 성공/실패 라운드 합계, 최소 성공 라운드 수를 검증하고 평균을 재계산한다. 클라이언트가 전송한 `average_ms`는 저장/랭킹 계산의 기준으로 사용하지 않는다.
+
+MVP의 반응 시간 자체는 브라우저에서 측정되므로 완전한 부정행위 방지는 불가능하다. 따라서 MVP에서는 비정상 값/구조를 차단하고, 이후 경쟁성이 높아지면 서버 발급 세션 챌린지와 이벤트 검증을 추가한다.
+
+### Reaction Test 데이터 모델
+
+Click Rush는 점수가 높을수록 좋은 기존 `game_scores` 구조를 사용하지만, Reaction Test는 **평균 ms가 낮을수록 좋은 역순 랭킹**이므로 별도 게임 테이블을 사용한다.
+
+예정 테이블: `reaction_test_scores`
+
+```text
+id
+account_user_id
+average_ms
+best_ms
+successful_rounds
+false_starts
+timeouts
+round_times_json
+created_at
+```
+
+- `account_user_id`: Account D1 `users.id`
+- `average_ms`: 서버에서 성공 라운드 시간으로 계산한 평균
+- `best_ms`: 성공 라운드 중 최저 반응 시간
+- `round_times_json`: 감사/통계 목적의 라운드별 성공 반응 시간
+
+### Reaction Test 랭킹
+
+API:
+- `GET /api/games/reaction/ranking`
+- `GET /api/games/reaction/my-rank`
+- `GET /api/games/reaction/best`
+- `POST /api/games/reaction/scores`
+
+랭킹은 사용자별 **최저 평균 반응 시간**을 기준으로 상위 100명을 반환한다. 동률이면 먼저 기록한 사용자를 우선한다.
+
+### 보안 검증
+
+서버는 최소한 다음을 검증한다.
+
+- `round_count === 5`
+- 성공/false start/timeout 합계가 5인지 확인
+- `reaction_times` 개수가 성공 라운드 수와 일치하는지 확인
+- 반응 시간은 정수이며 합리적인 최소/최대 범위인지 확인
+- 성공 라운드가 3회 이상인지 확인
+- `average_ms`는 클라이언트 값을 사용하지 않고 서버에서 계산
+- 음수/비정상적으로 큰 값/구조가 다른 payload 거부
+
+## 9. 점수 보안
 
 ```text
 Browser → Game Server → 입력 검증/점수 재계산 → Game DB → Ranking
@@ -130,7 +270,7 @@ Browser → Game Server → 입력 검증/점수 재계산 → Game DB → Ranki
 
 클라이언트가 임의의 최종 점수를 제출해도 서버에서 무시한다. MVP에서는 플레이 지표 기반 검증을 적용하고, 경쟁성이 높은 게임부터 세션/속도/플레이 이벤트 검증을 강화한다.
 
-## 9. 데이터 소유권
+## 10. 데이터 소유권
 
 Account와 Game 데이터는 별도의 D1 database binding으로 운영한다.
 
@@ -146,6 +286,7 @@ Game DB:
 - 최고 점수
 - 랭킹
 - 게임별 진행 데이터
+- reaction_test_scores
 
 게임 DB는 `account_user_id`를 계정 플랫폼의 `users.id`와 연결한다. Game DB에는 Account 테이블이나 Kakao 토큰을 복제하지 않는다.
 
@@ -164,7 +305,7 @@ Game DB:
 - `Legacy Game Data Migration` workflow에서 `cleanup_legacy=true`로 실행하여 Account D1의 legacy `game_scores` 테이블 삭제를 완료했다.
 - 이후 런타임은 Account D1의 legacy `game_scores`에 의존하지 않으며 Game D1만 사용한다.
 
-## 10. 게임 카탈로그
+## 11. 게임 카탈로그
 
 초기에는 정적 TypeScript 데이터로 관리한다.
 
@@ -181,11 +322,15 @@ ranking_enabled
 
 상태: `active`, `maintenance`, `coming_soon`
 
-## 11. UI/UX
+Reaction Test는 기획/구현 완료 후 `coming_soon`에서 `active`로 전환한다.
+
+## 12. UI/UX
 
 데스크톱은 3~4열 게임 카드, 모바일은 1~2열 카드와 세로형 게임 영역을 사용한다. 랭킹 표는 모바일에서 핵심 컬럼 중심으로 축약한다.
 
-## 12. MVP 단계
+Reaction Test는 기존 Linux/CLI 느낌을 유지하되 상태 변화가 명확하게 보이도록 `READY`, `WAIT`, `GO!`, `RESULT`를 크게 표시한다.
+
+## 13. MVP 단계
 
 ### Phase A — 포털
 - [x] 공통 상단바
@@ -207,14 +352,22 @@ ranking_enabled
 - [x] 기존 Account D1의 legacy game_scores 데이터 이전 검증
 - [x] 이전 검증 후 Account D1 legacy game_scores 제거
 
-### Phase C — 확장
-- [ ] 두 번째 게임 추가
+### Phase C — 두 번째 게임
+- [x] Reaction Test 게임 규칙 기획
+- [x] Reaction Test 전용 데이터 모델 기획
+- [ ] Reaction Test 구현
+- [ ] Reaction Test 점수 저장 API
+- [ ] Reaction Test 개인 최고 기록 API
+- [ ] Reaction Test 랭킹 API/페이지
+- [ ] Reaction Test 포털 활성화
+
+### Phase D — 확장
 - [ ] 카탈로그 관리
 - [ ] 기간/시즌 랭킹
 - [ ] 서버 점수 검증 강화
 - [ ] 부정행위 모니터링
 
-## 13. 최종 기획 원칙
+## 14. 최종 기획 원칙
 
 1. **Account** — 누가 플레이하는가?
 2. **Portal** — 어떤 게임을 선택하는가?
@@ -222,7 +375,7 @@ ranking_enabled
 
 게임 수가 늘어나도 계정 시스템을 다시 만들지 않고, 각 게임의 랭킹/데이터 정책을 독립적으로 운영한다.
 
-## 14. 다음 구현 순서
+## 15. 다음 구현 순서
 
 1. ~~포털 홈~~
 2. ~~공통 상단바~~
@@ -235,4 +388,9 @@ ranking_enabled
 9. ~~실제 카카오 로그인 사용자 통합 테스트~~
 10. ~~Legacy Account D1 데이터를 Game D1로 이전 및 검증~~
 11. ~~Account D1 legacy 테이블 제거~~
-12. 두 번째 게임 추가
+12. ~~두 번째 게임 기획~~
+13. Reaction Test 구현
+14. Reaction Test 점수 저장 API
+15. Reaction Test 개인 최고 기록 API
+16. Reaction Test 랭킹 API/페이지
+17. 포털 카탈로그 활성화 및 통합 검증
