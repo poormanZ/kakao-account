@@ -1,11 +1,10 @@
 import type { AuthUser } from "./auth";
 
-const esc = (value: string): string => value.replace(/[&<>\"]/g, (char) => {
+const esc = (value: string): string => value.replace(/[&<>]/g, (char) => {
   switch (char) {
     case "&": return "&amp;";
     case "<": return "&lt;";
     case ">": return "&gt;";
-    case '"': return "&quot;";
     default: return char;
   }
 });
