@@ -80,7 +80,7 @@
 - [x] 9Grid 게임 UI 구현 — `/9grid`
 - [x] `9grid_scores` migration 및 랭킹 API 구현
 - [x] 포털 9Grid 게임 카드/진입 화면 연동 — `/`
-- [ ] 9Grid UI와 점수 저장/랭킹 API 연결
+- [x] 9Grid UI와 점수 저장/랭킹 API 연결
 - [ ] 실제 플레이 밸런싱 및 UX 검증
 
 ## 완료 기준
