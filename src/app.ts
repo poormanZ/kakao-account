@@ -2,6 +2,8 @@ import worker, { type Env } from "./index";
 import { getAuthenticatedUser, getCookie, hashSessionId, type AuthUser } from "./auth";
 import { GAME_CATALOG } from "./game-catalog";
 import { renderClickRushPage } from "./click-rush";
+import { getClickRushBest, getClickRushRanking, getClickRushUserRank, submitClickRushScore } from "./click-rush-api";
+import { renderClickRushRankingPage } from "./click-rush-ranking";
 import { logError, logWarn } from "./logger";
 import { renderAccountPage, renderGamePlaceholderPage, renderPortalPage } from "./web";
 
@@ -38,12 +40,18 @@ const completeKakaoLogin = async (request: Request, env: Env): Promise<Response>
     headers.append("Set-Cookie", cookie(SESSION_COOKIE, await createServiceSession(env.DB, user.id), SESSION_TTL_SECONDS, secure)); headers.set("Location", new URL("/", env.APP_BASE_URL).toString()); return new Response(null, { status: 302, headers });
   } catch (error) { logError("kakao.web_authentication_exception", error, { route: url.pathname, method: request.method }); headers.set("Location", `${new URL("/", env.APP_BASE_URL).toString()}?error=auth`); return new Response(null, { status: 302, headers }); }
 };
+const durationFromRequest = (url: URL): number => Number(url.searchParams.get("duration") || "60");
 const app = {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     if (request.method === "GET" && url.pathname === "/") { try { const user = await getAuthenticatedUser(request, env.DB, SESSION_COOKIE); const error = url.searchParams.get("error") === "auth" ? "카카오 로그인에 실패했습니다. 다시 시도해주세요." : null; return page(renderPortalPage(user, GAME_CATALOG, error)); } catch (error) { logError("web.portal_page_failed", error, { route: "/", method: "GET" }); return page(renderPortalPage(null, GAME_CATALOG, "서비스 정보를 불러오지 못했습니다.")); } }
     if (request.method === "GET" && url.pathname === "/account") { try { const user = await getAuthenticatedUser(request, env.DB, SESSION_COOKIE); return page(renderAccountPage(user, "로그인이 필요합니다.")); } catch (error) { logError("web.account_page_failed", error, { route: "/account", method: "GET" }); return page(renderAccountPage(null, "계정 정보를 불러오지 못했습니다.")); } }
     if (request.method === "GET" && url.pathname === "/games/click-rush") { try { const user = await getAuthenticatedUser(request, env.DB, SESSION_COOKIE); return page(renderClickRushPage(user)); } catch (error) { logError("web.click_rush_page_failed", error, { route: url.pathname, method: request.method }); return page(renderClickRushPage(null)); } }
+    if (request.method === "GET" && url.pathname === "/games/click-rush/ranking") { try { const user = await getAuthenticatedUser(request, env.DB, SESSION_COOKIE); return page(renderClickRushRankingPage(user)); } catch (error) { logError("web.click_rush_ranking_page_failed", error, { route: url.pathname, method: request.method }); return page(renderClickRushRankingPage(null)); } }
+    if (request.method === "POST" && url.pathname === "/api/games/click-rush/scores") { let user: AuthUser | null; try { user = await getAuthenticatedUser(request, env.DB, SESSION_COOKIE); } catch (error) { logError("game.score_user_lookup_failed", error, { route: url.pathname, method: request.method }); return apiJson({ error: "Authentication service unavailable" }, 503); } const body = await parseJsonBody(request); return submitClickRushScore(env.DB, user, body); }
+    if (request.method === "GET" && url.pathname === "/api/games/click-rush/ranking") { try { return getClickRushRanking(env.DB, durationFromRequest(url)); } catch (error) { logError("game.ranking_failed", error, { route: url.pathname, method: request.method }); return apiJson({ error: "Ranking service unavailable" }, 503); } }
+    if (request.method === "GET" && url.pathname === "/api/games/click-rush/best") { try { const user = await getAuthenticatedUser(request, env.DB, SESSION_COOKIE); return getClickRushBest(env.DB, user, durationFromRequest(url)); } catch (error) { logError("game.best_failed", error, { route: url.pathname, method: request.method }); return apiJson({ error: "Score service unavailable" }, 503); } }
+    if (request.method === "GET" && url.pathname === "/api/games/click-rush/my-rank") { try { const user = await getAuthenticatedUser(request, env.DB, SESSION_COOKIE); return getClickRushUserRank(env.DB, user, durationFromRequest(url)); } catch (error) { logError("game.my_rank_failed", error, { route: url.pathname, method: request.method }); return apiJson({ error: "Ranking service unavailable" }, 503); } }
     const gameMatch = url.pathname.match(/^\/games\/([^/]+)(?:\/ranking)?$/);
     if (request.method === "GET" && gameMatch) { const game = GAME_CATALOG.find((item) => item.slug === decodeURIComponent(gameMatch[1])); if (!game) return new Response("Not Found", { status: 404, headers: { "Content-Type": "text/plain; charset=UTF-8" } }); const ranking = url.pathname.endsWith("/ranking"); try { const user = await getAuthenticatedUser(request, env.DB, SESSION_COOKIE); return page(renderGamePlaceholderPage(user, game, ranking)); } catch { return page(renderGamePlaceholderPage(null, game, ranking)); } }
     if (request.method === "PUT" && url.pathname === "/api/profile/nickname") {
