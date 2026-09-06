@@ -1,12 +1,8 @@
 import { validateReactionTestSubmission, calculateReactionTestResult, type ReactionTestResult } from "./reaction-test-score";
 import type { AuthUser } from "./auth";
 
-interface ScoreRow extends ReactionTestResult {
-  created_at: string;
-}
-interface RankingScoreRow extends ScoreRow {
-  account_user_id: number;
-}
+interface ScoreRow extends ReactionTestResult { created_at: string; }
+interface RankingScoreRow extends ScoreRow { account_user_id: number; }
 interface RankingUserRow { id: number; nickname: string | null; }
 interface RankingRow { rank: number; nickname: string; average_ms: number; best_ms: number; successful_rounds: number; created_at: string; }
 
@@ -19,9 +15,9 @@ export const submitReactionTestScore = async (db: D1Database | undefined, user: 
   try {
     const submission = validateReactionTestSubmission(body);
     const result = calculateReactionTestResult(submission);
+    const previous = await db.prepare("SELECT average_ms FROM reaction_test_scores WHERE account_user_id = ? ORDER BY average_ms ASC, created_at ASC, id ASC LIMIT 1").bind(user.id).first<{ average_ms: number }>();
     await db.prepare(`INSERT INTO reaction_test_scores (account_user_id, average_ms, best_ms, successful_rounds, false_starts, timeouts, round_times_json) VALUES (?, ?, ?, ?, ?, ?, ?)`).bind(user.id, result.average_ms, result.best_ms, result.successful_rounds, result.false_starts, result.timeouts, JSON.stringify(submission.reaction_times)).run();
-    const best = await db.prepare(`SELECT average_ms, best_ms, successful_rounds, false_starts, timeouts, created_at FROM reaction_test_scores WHERE account_user_id = ? ORDER BY average_ms ASC, created_at ASC, id ASC LIMIT 1`).bind(user.id).first<ScoreRow>();
-    return json({ game: "reaction", average_ms: result.average_ms, best_ms: result.best_ms, is_personal_best: best?.average_ms === result.average_ms && best.best_ms === result.best_ms && best.created_at !== undefined && best.created_at === (await db.prepare(`SELECT created_at FROM reaction_test_scores WHERE account_user_id = ? ORDER BY id DESC LIMIT 1`).bind(user.id).first<{ created_at: string }>())?.created_at });
+    return json({ game: "reaction", average_ms: result.average_ms, best_ms: result.best_ms, is_personal_best: !previous || result.average_ms < previous.average_ms });
   } catch (error) {
     if (error instanceof Error && /invalid_/.test(error.message)) return json({ error: "Invalid reaction test submission" }, 400);
     if (isConstraintError(error)) return json({ error: "Invalid reaction test submission" }, 400);
@@ -32,16 +28,16 @@ export const submitReactionTestScore = async (db: D1Database | undefined, user: 
 export const getReactionTestBest = async (db: D1Database | undefined, user: AuthUser | null): Promise<Response> => {
   if (!user) return json({ error: "Unauthorized" }, 401);
   if (!db) return json({ error: "Game service unavailable" }, 503);
-  const best = await db.prepare(`SELECT average_ms, best_ms, successful_rounds, false_starts, timeouts, created_at FROM reaction_test_scores WHERE account_user_id = ? ORDER BY average_ms ASC, created_at ASC, id ASC LIMIT 1`).bind(user.id).first<ScoreRow>();
+  const best = await db.prepare("SELECT average_ms, best_ms, successful_rounds, false_starts, timeouts, created_at FROM reaction_test_scores WHERE account_user_id = ? ORDER BY average_ms ASC, created_at ASC, id ASC LIMIT 1").bind(user.id).first<ScoreRow>();
   return json({ game: "reaction", best: best ?? null });
 };
 
 export const getReactionTestUserRank = async (db: D1Database | undefined, user: AuthUser | null): Promise<Response> => {
   if (!user) return json({ error: "Unauthorized" }, 401);
   if (!db) return json({ error: "Game service unavailable" }, 503);
-  const best = await db.prepare(`SELECT average_ms, created_at FROM reaction_test_scores WHERE account_user_id = ? ORDER BY average_ms ASC, created_at ASC, id ASC LIMIT 1`).bind(user.id).first<{ average_ms: number; created_at: string }>();
+  const best = await db.prepare("SELECT average_ms FROM reaction_test_scores WHERE account_user_id = ? ORDER BY average_ms ASC, created_at ASC, id ASC LIMIT 1").bind(user.id).first<{ average_ms: number }>();
   if (!best) return json({ game: "reaction", rank: null, average_ms: null });
-  const rank = await db.prepare(`SELECT COUNT(*) + 1 AS rank FROM (SELECT account_user_id, MIN(average_ms) AS average_ms FROM reaction_test_scores GROUP BY account_user_id) ranked WHERE average_ms < ?`).bind(best.average_ms).first<{ rank: number }>();
+  const rank = await db.prepare("SELECT COUNT(*) + 1 AS rank FROM (SELECT account_user_id, MIN(average_ms) AS average_ms FROM reaction_test_scores GROUP BY account_user_id) ranked WHERE average_ms < ?").bind(best.average_ms).first<{ rank: number }>();
   return json({ game: "reaction", rank: rank?.rank ?? null, average_ms: best.average_ms });
 };
 
