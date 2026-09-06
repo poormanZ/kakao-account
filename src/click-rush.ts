@@ -1,0 +1,60 @@
+export interface ClickRushUser {
+  id: number;
+  nickname: string | null;
+  profile_image_url: string | null;
+}
+
+const escapeHtml = (value: string): string => value.replace(/[&<>"']/g, (character) => ({
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  '"': "&quot;",
+  "'": "&#39;",
+}[character] ?? character));
+
+const profileMarkup = (user: ClickRushUser): string => {
+  const image = user.profile_image_url?.startsWith("https:")
+    ? `<img class="mini-avatar" src="${escapeHtml(user.profile_image_url)}" alt="프로필 이미지">`
+    : `<span class="mini-avatar avatar-placeholder">K</span>`;
+  return `${image}<a class="user-link" href="/account">${escapeHtml(user.nickname || "내 정보")}</a>`;
+};
+
+export const renderClickRushPage = (user: ClickRushUser | null): string => `<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Click Rush</title>
+<style>
+:root{color-scheme:light;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:#f5f6f8;color:#191919}a{color:inherit}.topbar{min-height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 max(16px,calc((100vw - 1120px)/2));background:#fff;border-bottom:1px solid #e7e7e7}.brand{font-weight:900;text-decoration:none;letter-spacing:-.03em}.user-area{display:flex;align-items:center;gap:10px;font-size:14px}.mini-avatar{width:32px;height:32px;border-radius:50%;object-fit:cover;background:#eee;display:grid;place-items:center}.avatar-placeholder{font-weight:800}.user-link{font-weight:700;text-decoration:none}.login-link{padding:9px 13px;border-radius:9px;background:#fee500;text-decoration:none;font-weight:800}
+main{width:min(94vw,900px);margin:0 auto;padding:32px 0 56px}.back{font-size:14px;color:#666;text-decoration:none}.hero{margin:20px 0}.eyebrow{margin:0 0 8px;color:#777;font-size:13px;font-weight:800;letter-spacing:.08em}h1{margin:0 0 8px;font-size:clamp(30px,5vw,44px);letter-spacing:-.04em}.subtitle{margin:0;color:#666}.panel{background:#fff;border:1px solid #e5e5e5;border-radius:20px;box-shadow:0 10px 30px rgba(0,0,0,.06);padding:22px}.mode-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.mode{padding:13px;border:1px solid #ddd;border-radius:12px;background:#fff;font:inherit;font-weight:800;cursor:pointer}.mode.selected{border-color:#191919;background:#191919;color:#fff}.start{width:100%;margin-top:14px;padding:14px;border:0;border-radius:12px;background:#191919;color:#fff;font:inherit;font-weight:900;cursor:pointer}.hud{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}.stat{padding:12px;border:1px solid #eee;border-radius:12px;background:#fafafa}.stat-label{display:block;color:#888;font-size:12px}.stat-value{display:block;margin-top:2px;font-size:22px;font-weight:900}.arena{position:relative;height:min(58vh,500px);min-height:340px;overflow:hidden;border-radius:16px;background:#111;border:1px solid #222;cursor:crosshair}.target{position:absolute;width:72px;height:72px;border:0;border-radius:50%;background:#fff;color:#111;font-size:20px;font-weight:900;cursor:pointer;box-shadow:0 4px 18px rgba(255,255,255,.25);transform:translate(-50%,-50%);display:none}.target:active{transform:translate(-50%,-50%) scale(.92)}.game-message{position:absolute;inset:0;display:grid;place-items:center;color:#fff;text-align:center;padding:20px;pointer-events:none}.game-message strong{font-size:26px}.game-message span{display:block;margin-top:8px;color:#bbb}.result{text-align:center;padding:28px 10px 8px;display:none}.result h2{margin:0 0 8px}.score-big{font-size:52px;font-weight:950}.actions{display:flex;justify-content:center;gap:10px;margin-top:18px}.actions a,.actions button{padding:11px 15px;border-radius:10px;border:1px solid #ddd;background:#fff;text-decoration:none;font:inherit;font-weight:800;cursor:pointer}.actions .primary{background:#191919;color:#fff;border-color:#191919}.rule{margin:18px 0 0;color:#777;font-size:13px;line-height:1.6}.login-note{margin-top:14px;padding:12px;border-radius:10px;background:#fff8e1;color:#7a5a00;font-size:13px}.hidden{display:none!important}
+@media(max-width:640px){.user-link{display:none}main{padding-top:24px}.panel{padding:16px}.arena{min-height:300px;height:52vh}.mode-row{grid-template-columns:1fr}.hud{grid-template-columns:repeat(3,1fr)}.stat-value{font-size:18px}}
+</style>
+</head>
+<body>
+<header class="topbar"><a class="brand" href="/">MINI GAME PORTAL</a><div class="user-area">${user ? `${profileMarkup(user)}<button id="logout" class="user-link" style="border:0;background:transparent;cursor:pointer;font:inherit">로그아웃</button>` : `<a class="login-link" href="/auth/kakao">카카오로 로그인</a>`}</div></header>
+<main>
+<a class="back" href="/">← 게임 목록</a>
+<section class="hero"><p class="eyebrow">MINI GAME · 01</p><h1>Click Rush</h1><p class="subtitle">제한 시간 안에 움직이는 타겟을 최대한 많이 클릭하세요.</p></section>
+<section id="setup" class="panel"><h2 style="margin:0 0 14px">플레이 시간 선택</h2><div class="mode-row"><button class="mode selected" data-duration="60">1분</button><button class="mode" data-duration="180">3분</button><button class="mode" data-duration="300">5분</button></div><button id="start" class="start">게임 시작</button><p class="rule">타겟 적중 +10점 · 연속 5/10/20회마다 보너스 · 빗나간 클릭 -2점(최저 0점). 시간이 끝나면 자동 종료됩니다.</p>${user ? "" : `<div class="login-note">게스트로 먼저 플레이할 수 있습니다. 현재 버전에서는 결과가 브라우저에만 표시되며 서버 랭킹 저장은 다음 단계에서 연결합니다.</div>`}</section>
+<section id="game" class="panel hidden"><div class="hud"><div class="stat"><span class="stat-label">남은 시간</span><span id="timer" class="stat-value">60</span></div><div class="stat"><span class="stat-label">점수</span><span id="score" class="stat-value">0</span></div><div class="stat"><span class="stat-label">콤보</span><span id="combo" class="stat-value">0</span></div></div><div id="arena" class="arena"><button id="target" class="target" type="button">+10</button><div id="gameMessage" class="game-message"><div><strong>READY</strong><span>타겟을 클릭하면 시작합니다.</span></div></div></div></section>
+<section id="result" class="panel result"><p class="eyebrow">GAME OVER</p><h2>최종 점수</h2><div id="finalScore" class="score-big">0</div><div id="resultDetail" class="rule"></div><div class="actions"><button id="retry" class="primary">다시 플레이</button><a href="/games/click-rush/ranking">랭킹 보기</a><a href="/">홈</a></div></section>
+</main>
+${user ? `<script>document.getElementById("logout")?.addEventListener("click",async()=>{const b=document.getElementById("logout");if(b)b.disabled=true;try{const r=await fetch("/auth/logout",{method:"POST"});if(r.ok)location.href="/";else if(b)b.disabled=false}catch{if(b)b.disabled=false}});</script>` : ""}
+<script>
+(() => {
+  const setup=document.getElementById("setup"), game=document.getElementById("game"), result=document.getElementById("result");
+  const start=document.getElementById("start"), retry=document.getElementById("retry"), arena=document.getElementById("arena"), target=document.getElementById("target");
+  const timerEl=document.getElementById("timer"), scoreEl=document.getElementById("score"), comboEl=document.getElementById("combo"), finalEl=document.getElementById("finalScore"), detailEl=document.getElementById("resultDetail"), message=document.getElementById("gameMessage");
+  let duration=60, remaining=60, score=0, combo=0, clicks=0, misses=0, running=false, endAt=0, timerId=0;
+  document.querySelectorAll(".mode").forEach(button=>button.addEventListener("click",()=>{document.querySelectorAll(".mode").forEach(item=>item.classList.remove("selected"));button.classList.add("selected");duration=Number(button.dataset.duration||60);timerEl.textContent=String(duration);}));
+  const moveTarget=()=>{const rect=arena.getBoundingClientRect();const padding=45;const x=padding+Math.random()*Math.max(1,rect.width-padding*2);const y=padding+Math.random()*Math.max(1,rect.height-padding*2);target.style.left=x+"px";target.style.top=y+"px";target.style.width=Math.max(42,72-Math.floor((duration-(remaining||duration))/30)*2)+"px";};
+  const update=()=>{remaining=Math.max(0,(endAt-performance.now())/1000);timerEl.textContent=remaining.toFixed(1);if(remaining<=0){finish();}};
+  const finish=()=>{if(!running)return;running=false;window.clearInterval(timerId);target.style.display="none";message.classList.remove("hidden");message.innerHTML="<div><strong>TIME UP</strong><span>결과를 확인하세요.</span></div>";finalEl.textContent=String(score);detailEl.textContent=`${duration/60}분 · ${clicks}회 적중 · ${misses}회 빗나감 · 최고 콤보 ${combo}`;game.classList.add("hidden");result.style.display="block";};
+  const begin=()=>{setup.classList.add("hidden");result.style.display="none";game.classList.remove("hidden");remaining=duration;score=0;combo=0;clicks=0;misses=0;running=true;timerEl.textContent=duration.toFixed(1);scoreEl.textContent="0";comboEl.textContent="0";message.innerHTML="<div><strong>GO!</strong><span>타겟을 빠르게 클릭하세요.</span></div>";message.classList.add("hidden");endAt=performance.now()+duration*1000;moveTarget();target.style.display="block";timerId=window.setInterval(update,50);};
+  target.addEventListener("click",event=>{event.stopPropagation();if(!running)return;clicks++;combo++;score+=10;if(combo===5||combo===10||combo===20)score+=combo*2;scoreEl.textContent=String(score);comboEl.textContent=String(combo);moveTarget();});
+  arena.addEventListener("click",event=>{if(!running||event.target===target)return;misses++;combo=0;score=Math.max(0,score-2);scoreEl.textContent=String(score);comboEl.textContent="0";});
+  start.addEventListener("click",begin);retry.addEventListener("click",()=>{result.style.display="none";setup.classList.remove("hidden");});
+})();
+</script>
+</body></html>`;
