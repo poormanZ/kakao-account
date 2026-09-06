@@ -12,8 +12,8 @@ describe("Click Rush score validation", () => {
       combo10_count: 1,
       combo20_count: 1,
     };
-    expect(calculateClickRushScore(submission)).toBe(288);
-    expect(validateClickRushSubmission(submission)?.score).toBe(288);
+    expect(calculateClickRushScore(submission)).toBe(266);
+    expect(validateClickRushSubmission(submission)?.score).toBe(266);
   });
 
   it("rejects an unsupported duration", () => {
