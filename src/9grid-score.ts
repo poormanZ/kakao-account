@@ -18,7 +18,7 @@ type ScoreRow = NineGridScore;
 
 const SCORE_LIMIT = 100;
 
-const dbForScores = (env: ScoreEnv): D1Database => env.GAME_DB ?? env.DB;
+const dbForScores = (env: ScoreEnv): D1Database => env.DB;
 
 const scoreJson = (data: unknown, status = 200): Response => Response.json(data, {
   status,
