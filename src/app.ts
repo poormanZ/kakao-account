@@ -1,7 +1,7 @@
 import worker, { type Env } from "./index";
 import { getAuthenticatedUser, getCookie, hashSessionId, type AuthUser } from "./auth";
 import { GAME_CATALOG } from "./game-catalog";
-import { render9GridPage } from "./9grid-ui";
+import { render9GridScorePage } from "./9grid-score-ui";
 import { renderClickRushPage } from "./click-rush";
 import { getClickRushBest, getClickRushRanking, getClickRushUserRank, submitClickRushScore } from "./click-rush-api";
 import { renderClickRushRankingPage } from "./click-rush-ranking";
@@ -50,7 +50,7 @@ const app = {
     const url = new URL(request.url);
     if (request.method === "GET" && url.pathname === "/") { try { const user = await getAuthenticatedUser(request, env.DB, SESSION_COOKIE); const error = url.searchParams.get("error") === "auth" ? "카카오 로그인에 실패했습니다. 다시 시도해주세요." : null; return page(renderPortalPage(user, GAME_CATALOG, error)); } catch (error) { logError("web.portal_page_failed", error, { route: "/", method: "GET" }); return page(renderPortalPage(null, GAME_CATALOG, "서비스 정보를 불러오지 못했습니다.")); } }
     if (request.method === "GET" && url.pathname === "/account") { try { const user = await getAuthenticatedUser(request, env.DB, SESSION_COOKIE); return page(renderAccountPage(user, "로그인이 필요합니다.")); } catch (error) { logError("web.account_page_failed", error, { route: "/account", method: request.method }); return page(renderAccountPage(null, "계정 정보를 불러오지 못했습니다.")); } }
-    if (request.method === "GET" && url.pathname === "/games/9grid") { try { const user = await getAuthenticatedUser(request, env.DB, SESSION_COOKIE); return render9GridPage(user); } catch (error) { logError("web.9grid_page_failed", error, { route: url.pathname, method: request.method }); return render9GridPage(null); } }
+    if (request.method === "GET" && url.pathname === "/games/9grid") { try { const user = await getAuthenticatedUser(request, env.DB, SESSION_COOKIE); return await render9GridScorePage(user); } catch (error) { logError("web.9grid_page_failed", error, { route: url.pathname, method: request.method }); return await render9GridScorePage(null); } }
     if (request.method === "GET" && url.pathname === "/games/click-rush") { try { const user = await getAuthenticatedUser(request, env.DB, SESSION_COOKIE); return page(renderClickRushPage(user)); } catch (error) { logError("web.click_rush_page_failed", error, { route: url.pathname, method: request.method }); return page(renderClickRushPage(null)); } }
     if (request.method === "GET" && url.pathname === "/games/reaction") { try { const user = await getAuthenticatedUser(request, env.DB, SESSION_COOKIE); return page(renderReactionTestPage(user)); } catch (error) { logError("web.reaction_test_page_failed", error, { route: url.pathname, method: request.method }); return page(renderReactionTestPage(null)); } }
     if (request.method === "GET" && url.pathname === "/games/click-rush/ranking") { try { const user = await getAuthenticatedUser(request, env.DB, SESSION_COOKIE); return page(renderClickRushRankingPage(user)); } catch (error) { logError("web.click_rush_ranking_page_failed", error, { route: url.pathname, method: request.method }); return page(renderClickRushRankingPage(null)); } }
