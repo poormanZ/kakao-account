@@ -40,22 +40,23 @@ export const validateClickRushSubmission = (value: unknown): ValidatedClickRushS
   if (![clicks, misses, maxCombo, combo5, combo10, combo20].every(isInteger)) return null;
 
   const numeric = [clicks, misses, maxCombo, combo5, combo10, combo20] as number[];
+  const [clickCount, missCount, comboMax, combo5Count, combo10Count, combo20Count] = numeric;
   if (numeric.some((item) => item < 0)) return null;
-  if (clicks > duration * 30 || misses > duration * 30) return null;
-  if (maxCombo > clicks) return null;
-  if (combo10 > combo5 || combo20 > combo10) return null;
-  if (combo5 > Math.floor(clicks / 5)) return null;
-  if (combo10 > Math.floor(clicks / 10)) return null;
-  if (combo20 > Math.floor(clicks / 20)) return null;
+  if (clickCount > duration * 30 || missCount > duration * 30) return null;
+  if (comboMax > clickCount) return null;
+  if (combo10Count > combo5Count || combo20Count > combo10Count) return null;
+  if (combo5Count > Math.floor(clickCount / 5)) return null;
+  if (combo10Count > Math.floor(clickCount / 10)) return null;
+  if (combo20Count > Math.floor(clickCount / 20)) return null;
 
   const submission: ClickRushSubmission = {
     duration_seconds: duration,
-    clicks,
-    misses,
-    max_combo: maxCombo,
-    combo5_count: combo5,
-    combo10_count: combo10,
-    combo20_count: combo20,
+    clicks: clickCount,
+    misses: missCount,
+    max_combo: comboMax,
+    combo5_count: combo5Count,
+    combo10_count: combo10Count,
+    combo20_count: combo20Count,
   };
   return { ...submission, score: calculateClickRushScore(submission) };
 };
