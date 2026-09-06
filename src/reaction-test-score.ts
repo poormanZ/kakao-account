@@ -34,10 +34,14 @@ export function validateReactionTestSubmission(
   const reactionTimes = input.reaction_times;
 
   if (
+    typeof roundCount !== "number" ||
     !Number.isInteger(roundCount) ||
     roundCount !== REACTION_TEST_ROUNDS ||
+    typeof successfulRounds !== "number" ||
     !Number.isInteger(successfulRounds) ||
+    typeof falseStarts !== "number" ||
     !Number.isInteger(falseStarts) ||
+    typeof timeouts !== "number" ||
     !Number.isInteger(timeouts) ||
     successfulRounds < REACTION_TEST_MIN_SUCCESSFUL_ROUNDS ||
     successfulRounds > REACTION_TEST_ROUNDS ||
@@ -61,17 +65,12 @@ export function validateReactionTestSubmission(
     throw new Error("invalid_reaction_times");
   }
 
-  const validatedRoundCount = roundCount;
-  const validatedSuccessfulRounds = successfulRounds;
-  const validatedFalseStarts = falseStarts;
-  const validatedTimeouts = timeouts;
-
   return {
-    round_count: validatedRoundCount,
-    successful_rounds: validatedSuccessfulRounds,
+    round_count: roundCount,
+    successful_rounds: successfulRounds,
     reaction_times: reactionTimes,
-    false_starts: validatedFalseStarts,
-    timeouts: validatedTimeouts,
+    false_starts: falseStarts,
+    timeouts,
   };
 }
 
