@@ -92,7 +92,9 @@ export const resolveTurnCombat = (
   state: GameState,
   { monsterAttack = 8, critRoll = 1 }: CombatTurnOptions = {},
 ): GameState => {
-  if (state.round.phase !== "combat") throw new Error("Combat is not ready");
+  if (state.round.phase !== "select" && state.round.phase !== "placement" && state.round.phase !== "combat") {
+    throw new Error("Combat is not ready");
+  }
   const synergy = findBoardSynergy(state.board);
   const result = calculateCombat({
     synergy,
@@ -107,6 +109,7 @@ export const resolveTurnCombat = (
     ...state,
     round: {
       ...state.round,
+      phase: "combat",
       playerHp: result.playerHpAfter,
       monsterHp: result.monsterHpAfter,
     },
