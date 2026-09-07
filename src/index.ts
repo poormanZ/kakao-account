@@ -184,6 +184,20 @@ const worker = {
       } catch (error) { logError("kakao.authentication_exception", error, context); return json({ error: "Kakao authentication failed" }, { status: 502, headers }, secure); }
     }
 
+    if (request.method === "POST" && url.pathname === "/auth/logout") {
+      const sessionId = getCookie(request, SESSION_COOKIE);
+      if (sessionId) {
+        try {
+          const sessionHash = await hashSessionId(sessionId);
+          await env.DB.prepare("DELETE FROM sessions WHERE id = ?").bind(sessionHash).run();
+        } catch (error) {
+          logError("auth.logout_failed", error, context);
+          return json({ error: "Authentication service unavailable" }, { status: 503 }, secure);
+        }
+      }
+      return json({ logged_out: true }, { headers: { "Set-Cookie": clearCookie(SESSION_COOKIE, secure) } }, secure);
+    }
+
     if (request.method === "GET" && url.pathname === "/api/me") {
       const sessionId = getCookie(request, SESSION_COOKIE);
       if (!sessionId) return json({ error: "Unauthorized" }, { status: 401 }, secure);
@@ -215,7 +229,7 @@ const worker = {
         try { const row = await env.DB.prepare(`SELECT setting_key, setting_value FROM user_settings WHERE user_id = ? AND setting_key = ? LIMIT 1`).bind(user.id, key).first<SettingRow>(); if (!row) return json({ error: "Setting not found" }, { status: 404 }, secure); return json({ key: row.setting_key, value: row.setting_value }, {}, secure); }
         catch (error) { logError("settings.get_failed", error, context); return json({ error: "Settings service unavailable" }, { status: 503 }, secure); }
       }
-      if (request.method !== "PUT") return json({ error: "Method not allowed" }, { status: 405 }, secure);
+      if (request.method !== "PUT") return json({ error: "Method not allowed" }, { status: 405, headers: { Allow: "GET, PUT, DELETE" } }, secure);
       const body = await parseJsonBody(request);
       if (!body || typeof body.value !== "string" || body.value.length > MAX_SETTING_VALUE_LENGTH) return json({ error: "Invalid setting value" }, { status: 400 }, secure);
       try { await env.DB.prepare(`INSERT INTO user_settings (user_id, setting_key, setting_value, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(user_id, setting_key) DO UPDATE SET setting_value = excluded.setting_value, updated_at = CURRENT_TIMESTAMP`).bind(user.id, key, body.value).run(); return json({ key, value: body.value }, {}, secure); }
