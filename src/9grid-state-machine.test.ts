@@ -61,12 +61,13 @@ describe("9Grid turn state machine", () => {
     expect(state.round.playerHp).toBe(100);
 
     state = resolveTurnCombat(state, { monsterAttack: 0 });
+    expect(state.round.playerHp).toBe(101);
     state = startTurn(state, { generateCards: generator });
     state = chooseTurnCard(state, "a");
     state = placeTurnCard(state, 0);
     expect(state.playerStats.maxHp).toBe(101);
     expect(state.round.playerMaxHp).toBe(101);
-    expect(state.round.playerHp).toBe(100);
+    expect(state.round.playerHp).toBe(101);
   });
 
   it("uses actual placed Healer count for combat recovery", () => {
