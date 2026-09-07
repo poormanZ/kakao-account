@@ -3,6 +3,8 @@ import {
   clearRound,
   createCard,
   findBoardSynergy,
+  getJobBaseStatIncrease,
+  getPlacementStatIncrease,
   getRerollLimit,
   placeCard,
   replaceCard,
@@ -41,15 +43,7 @@ export const startTurn = (
   if (state.round.phase !== "reroll") throw new Error("Turn has already started");
   const cards = generateCards(CARDS_PER_TURN);
   if (cards.length !== CARDS_PER_TURN) throw new Error("Card generator must return exactly three cards");
-
-  return {
-    ...state,
-    round: {
-      ...state.round,
-      phase: "select",
-      candidates: { cards, rerollsUsed: 0, selectedCardId: null },
-    },
-  };
+  return { ...state, round: { ...state.round, phase: "select", candidates: { cards, rerollsUsed: 0, selectedCardId: null } } };
 };
 
 export const rerollTurnCandidates = (
@@ -60,9 +54,7 @@ export const rerollTurnCandidates = (
   if (state.round.phase !== "select") throw new Error("Candidates can only be rerolled during selection");
   const synergy = findBoardSynergy(state.board);
   const rerollLimit = getRerollLimit(synergy.races.goblin ?? 0);
-  if (state.round.candidates.rerollsUsed >= rerollLimit) {
-    throw new Error("Reroll limit reached");
-  }
+  if (state.round.candidates.rerollsUsed >= rerollLimit) throw new Error("Reroll limit reached");
   const nextCards = generateCards(rerollIndexes.length);
   const candidates = rerollCandidates(
     state.round.candidates.cards,
@@ -80,16 +72,46 @@ export const chooseTurnCard = (state: GameState, cardId: string): GameState => {
   return { ...state, round: { ...state.round, phase: "placement", candidates } };
 };
 
+const applyPlacementStats = (state: GameState, boardIndex: number, card: Card, nextBoard: Board): GameState => {
+  const previousCard = state.board[boardIndex];
+  const previousIncrease = state.placementStatIncreases[boardIndex] ?? 0;
+  const nextSynergy = findBoardSynergy(nextBoard);
+  const increase = getPlacementStatIncrease(card.job, nextSynergy.races.dwarf ?? 0);
+  const statKey = getJobBaseStatIncrease(card.job);
+  const nextStats = { ...state.playerStats };
+
+  if (previousCard) {
+    const previousStatKey = getJobBaseStatIncrease(previousCard.job);
+    nextStats[previousStatKey] -= previousIncrease;
+  }
+  nextStats[statKey] += increase;
+
+  const nextRound = { ...state.round };
+  if (statKey === "maxHp") {
+    nextRound.playerMaxHp = nextStats.maxHp;
+    const previousHealerIncrease = previousCard?.job === "healer" ? previousIncrease : 0;
+    nextRound.playerHp = Math.min(nextRound.playerMaxHp, nextRound.playerHp + increase - previousHealerIncrease);
+  }
+
+  const placementStatIncreases = [...state.placementStatIncreases];
+  placementStatIncreases[boardIndex] = increase;
+  return {
+    ...state,
+    board: nextBoard,
+    playerStats: nextStats,
+    placementStatIncreases,
+    round: { ...nextRound, phase: "combat" },
+  };
+};
+
 export const placeTurnCard = (state: GameState, boardIndex: number): GameState => {
   if (state.round.phase !== "placement") throw new Error("Card cannot be placed in the current phase");
   const card = state.round.candidates.cards.find((candidate) => candidate.id === state.round.candidates.selectedCardId);
   if (!card) throw new Error("Selected card is missing");
-
   const nextBoard: Board = state.board[boardIndex] === null
     ? placeCard(state.board, boardIndex, card)
     : replaceCard(state.board, boardIndex, card);
-
-  return { ...state, board: nextBoard, round: { ...state.round, phase: "combat" } };
+  return applyPlacementStats(state, boardIndex, card, nextBoard);
 };
 
 export const resolveTurnCombat = (
@@ -102,26 +124,25 @@ export const resolveTurnCombat = (
   const synergy = findBoardSynergy(state.board);
   const result = calculateCombat({
     synergy,
+    playerStats: state.playerStats,
     playerHp: state.round.playerHp,
     playerMaxHp: state.round.playerMaxHp,
     monsterHp: state.round.monsterHp,
     monsterAttack,
     board: state.board,
   });
-
   const combatState: GameState = {
     ...state,
     round: {
       ...state.round,
       phase: "combat",
       playerHp: result.playerHpAfter,
+      playerMaxHp: result.playerStats.maxHp,
       monsterHp: result.monsterHpAfter,
     },
   };
-
   if (result.playerDefeated) return { ...combatState, gameOver: true, round: { ...combatState.round, phase: "game_over" } };
   if (result.monsterDefeated) return clearRound(combatState, Math.ceil(state.round.monsterMaxHp * 1.25));
   if (state.round.turn >= MAX_TURNS_PER_ROUND) return { ...combatState, gameOver: true, round: { ...combatState.round, phase: "game_over" } };
-
   return advanceTurn(combatState);
 };
