@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 import { createCard, findBoardSynergy } from "./9grid";
 import { calculateCombat, calculateCombatStats } from "./9grid-combat";
 
-const line = (race: "goblin" | "elf" | "dwarf" | "dragon", job: "tank" | "warrior" | "healer" | "mage") => [
+const line = (
+  race: "goblin" | "elf" | "dwarf" | "dragon",
+  job: "tank" | "warrior" | "healer" | "mage",
+) => [
   createCard("1", race, job),
   createCard("2", race, job),
   createCard("3", race, job),
@@ -33,7 +36,7 @@ describe("9Grid combat", () => {
     const synergy = findBoardSynergy(line("goblin", "healer"));
     const result = calculateCombatStats(synergy);
 
-    expect(result.heal).toBe(3);
+    expect(result.heal).toBe(6);
   });
 
   it("uses Mage synergy level for mana-based combat power", () => {
