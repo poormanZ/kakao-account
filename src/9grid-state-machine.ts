@@ -22,7 +22,6 @@ import { calculateCombat } from "./9grid-combat";
 export interface CardGenerator { (count: number): Card[]; }
 export interface TurnStartOptions { generateCards: CardGenerator; }
 export interface CombatTurnOptions { monsterAttack?: number; }
-
 const defaultCardGenerator: CardGenerator = (count) => Array.from({ length: count }, (_, index) => createCard(`generated-${Date.now()}-${index}`, "goblin", "warrior"));
 
 export const startTurn = (state: GameState, { generateCards = defaultCardGenerator }: TurnStartOptions): GameState => {
@@ -39,7 +38,7 @@ export const rerollTurnCandidates = (state: GameState, rerollIndexes: number[], 
   const rerollLimit = getRerollLimit(synergy.races.goblin ?? 0);
   if (state.round.candidates.rerollsUsed >= rerollLimit) throw new Error("Reroll limit reached");
   const nextCards = generateCards(rerollIndexes.length);
-  const candidates = rerollCandidates(state.round.candidates, rerollIndexes, nextCards, state.round.candidates.rerollsUsed, rerollLimit);
+  const candidates = rerollCandidates(state.round.candidates.cards, rerollIndexes, nextCards, state.round.candidates.rerollsUsed, rerollLimit);
   return { ...state, round: { ...state.round, candidates } };
 };
 
@@ -73,10 +72,7 @@ export const resolveTurnCombat = (state: GameState, { monsterAttack }: CombatTur
   const result = calculateCombat({ synergy, playerStats: state.playerStats, playerHp: state.round.playerHp, playerMaxHp: state.round.playerMaxHp, monsterHp: state.round.monsterHp, monsterAttack: monsterAttack ?? getMonsterAttack(state.round.round), board: state.board });
   const combatState: GameState = { ...state, round: { ...state.round, phase: "combat", playerHp: result.playerHpAfter, playerMaxHp: result.playerStats.maxHp, monsterHp: result.monsterHpAfter } };
   if (result.playerDefeated) return { ...combatState, gameOver: true, round: { ...combatState.round, phase: "game_over" } };
-  if (result.monsterDefeated) {
-    const nextRound = state.round.round + 1;
-    return clearRound(combatState, getMonsterMaxHp(nextRound));
-  }
+  if (result.monsterDefeated) return clearRound(combatState, getMonsterMaxHp(state.round.round + 1));
   if (state.round.turn >= MAX_TURNS_PER_ROUND) return { ...combatState, gameOver: true, round: { ...combatState.round, phase: "game_over" } };
   return advanceTurn(combatState);
 };
