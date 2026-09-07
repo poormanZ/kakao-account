@@ -18,7 +18,7 @@ describe("9Grid turn state machine", () => {
     expect(state.round.phase).toBe("placement");
     state = placeTurnCard(state, 0);
     expect(state.round.phase).toBe("combat");
-    expect(state.playerStats.attack).toBe(2);
+    expect(state.playerStats.attack).toBe(4);
     state = resolveTurnCombat(state, { monsterAttack: 1 });
     expect(state.round.phase).toBe("reroll");
     expect(state.round.turn).toBe(2);
@@ -30,14 +30,14 @@ describe("9Grid turn state machine", () => {
     state = startTurn(state, { generateCards: generator });
     state = chooseTurnCard(state, "a");
     state = placeTurnCard(state, 0);
-    expect(state.playerStats.attack).toBe(2);
+    expect(state.playerStats.attack).toBe(4);
 
     state = resolveTurnCombat(state, { monsterAttack: 0 });
     state = startTurn(state, { generateCards: generator });
     state = chooseTurnCard(state, "b");
     state = placeTurnCard(state, 0);
-    expect(state.playerStats.attack).toBe(2);
-    expect(state.playerStats.defense).toBe(2);
+    expect(state.playerStats.attack).toBe(4);
+    expect(state.playerStats.defense).toBe(4);
   });
 
   it("applies Dwarf synergy bonus using the synergy created by the placement", () => {
@@ -56,18 +56,18 @@ describe("9Grid turn state machine", () => {
     state = startTurn(state, { generateCards: () => [healer, cards[0], cards[1]] });
     state = chooseTurnCard(state, "healer");
     state = placeTurnCard(state, 0);
-    expect(state.playerStats.maxHp).toBe(101);
-    expect(state.round.playerMaxHp).toBe(101);
+    expect(state.playerStats.maxHp).toBe(106);
+    expect(state.round.playerMaxHp).toBe(106);
     expect(state.round.playerHp).toBe(100);
 
     state = resolveTurnCombat(state, { monsterAttack: 0 });
-    expect(state.round.playerHp).toBe(101);
+    expect(state.round.playerHp).toBe(106);
     state = startTurn(state, { generateCards: generator });
     state = chooseTurnCard(state, "a");
     state = placeTurnCard(state, 0);
-    expect(state.playerStats.maxHp).toBe(101);
-    expect(state.round.playerMaxHp).toBe(101);
-    expect(state.round.playerHp).toBe(101);
+    expect(state.playerStats.maxHp).toBe(106);
+    expect(state.round.playerMaxHp).toBe(106);
+    expect(state.round.playerHp).toBe(106);
   });
 
   it("uses actual placed Healer count for combat recovery", () => {
@@ -113,9 +113,7 @@ describe("9Grid turn state machine", () => {
     state.board[1] = createCard("g2", "goblin", "warrior");
     state.board[2] = createCard("g3", "goblin", "warrior");
     state = startTurn(state, { generateCards: generator });
-    const rerollGenerator = (count: number) =>
-      Array.from({ length: count }, (_, index) => createCard(`replacement-${index}`, "dragon", "healer"));
-
+    const rerollGenerator = (count: number) => Array.from({ length: count }, (_, index) => createCard(`replacement-${index}`, "dragon", "healer"));
     state = rerollTurnCandidates(state, [0], rerollGenerator);
     state = rerollTurnCandidates(state, [1], rerollGenerator);
     expect(state.round.candidates.rerollsUsed).toBe(2);
@@ -141,7 +139,7 @@ describe("9Grid turn state machine", () => {
     expect(state.round.round).toBe(2);
     expect(state.round.turn).toBe(1);
     expect(state.round.phase).toBe("reroll");
-    expect(state.round.monsterMaxHp).toBe(2);
+    expect(state.round.monsterMaxHp).toBe(180);
   });
 
   it("ends the game when turn 9 ends with the monster alive", () => {
