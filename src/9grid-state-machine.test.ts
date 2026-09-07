@@ -25,7 +25,7 @@ describe("9Grid turn state machine", () => {
     expect(state.board[0]?.id).toBe("a");
   });
 
-  it("applies a job stat increase once and removes it when the slot is replaced", () => {
+  it("keeps job stat increases permanent when the slot is replaced", () => {
     let state = createInitialState(100, 100);
     state = startTurn(state, { generateCards: generator });
     state = chooseTurnCard(state, "a");
@@ -36,9 +36,8 @@ describe("9Grid turn state machine", () => {
     state = startTurn(state, { generateCards: generator });
     state = chooseTurnCard(state, "b");
     state = placeTurnCard(state, 0);
-    expect(state.playerStats.attack).toBe(1);
+    expect(state.playerStats.attack).toBe(2);
     expect(state.playerStats.defense).toBe(2);
-    expect(state.placementStatIncreases[0]).toBe(1);
   });
 
   it("applies Dwarf synergy bonus using the synergy created by the placement", () => {
@@ -49,10 +48,9 @@ describe("9Grid turn state machine", () => {
     state = chooseTurnCard(state, "d3");
     state = placeTurnCard(state, 2);
     expect(state.playerStats.mana).toBe(3);
-    expect(state.placementStatIncreases[2]).toBe(2);
   });
 
-  it("keeps current HP unchanged when replacing a Healer card with a non-Healer", () => {
+  it("keeps accumulated max HP when replacing a Healer card with a non-Healer", () => {
     let state = createInitialState(100, 100);
     const healer = createCard("healer", "elf", "healer");
     state = startTurn(state, { generateCards: () => [healer, cards[0], cards[1]] });
@@ -66,8 +64,8 @@ describe("9Grid turn state machine", () => {
     state = startTurn(state, { generateCards: generator });
     state = chooseTurnCard(state, "a");
     state = placeTurnCard(state, 0);
-    expect(state.playerStats.maxHp).toBe(100);
-    expect(state.round.playerMaxHp).toBe(100);
+    expect(state.playerStats.maxHp).toBe(101);
+    expect(state.round.playerMaxHp).toBe(101);
     expect(state.round.playerHp).toBe(100);
   });
 
