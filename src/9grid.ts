@@ -44,6 +44,8 @@ export interface RoundState {
 
 export interface GameState {
   board: Board;
+  playerStats: PlayerStats;
+  placementStatIncreases: Array<number | null>;
   round: RoundState;
   maxClearedRound: number;
   gameOver: boolean;
@@ -68,6 +70,8 @@ export const createCard = (id: string, race: Race, job: Job): Card => ({ id, rac
 
 export const createInitialState = (playerMaxHp = 100, monsterMaxHp = 30): GameState => ({
   board: createEmptyBoard(),
+  playerStats: { attack: 1, defense: 1, maxHp: playerMaxHp, mana: 1 },
+  placementStatIncreases: Array<number | null>(BOARD_SIZE).fill(null),
   round: {
     round: 1,
     turn: 1,
@@ -135,10 +139,7 @@ export const selectCandidate = (state: CandidateState, cardId: string): Candidat
   return { ...state, selectedCardId: cardId };
 };
 
-const incrementSynergy = <T extends string>(
-  values: Partial<Record<T, number>>,
-  key: T,
-): void => {
+const incrementSynergy = <T extends string>(values: Partial<Record<T, number>>, key: T): void => {
   values[key] = Math.min(MAX_SYNERGY_LEVEL, (values[key] ?? 0) + 1);
 };
 
@@ -149,11 +150,9 @@ export const findBoardSynergy = (board: Board): SynergyResult => {
 
   const addLine = (axis: "row" | "column", index: number, cards: Card[]): void => {
     if (cards.length !== GRID_SIZE || cards.some((card) => card === null)) return;
-
     const race = cards.every((card) => card.race === cards[0].race) ? cards[0].race : null;
     const job = cards.every((card) => card.job === cards[0].job) ? cards[0].job : null;
     if (race === null && job === null) return;
-
     lines.push({ axis, index, race, job });
     if (race !== null) incrementSynergy(races, race);
     if (job !== null) incrementSynergy(jobs, job);
@@ -174,14 +173,10 @@ export const findBoardSynergy = (board: Board): SynergyResult => {
 
 export const getJobBaseStatIncrease = (job: Job): keyof PlayerStats => {
   switch (job) {
-    case "warrior":
-      return "attack";
-    case "tank":
-      return "defense";
-    case "healer":
-      return "maxHp";
-    case "mage":
-      return "mana";
+    case "warrior": return "attack";
+    case "tank": return "defense";
+    case "healer": return "maxHp";
+    case "mage": return "mana";
   }
 };
 
@@ -191,29 +186,21 @@ export const getJobBaseStatValue = (job: Job): number => {
 };
 
 export const getDwarfPlacementBonus = (dwarfSynergyLevel: number): number => {
-  if (!Number.isInteger(dwarfSynergyLevel) || dwarfSynergyLevel < 0) {
-    throw new Error("Invalid dwarf synergy level");
-  }
+  if (!Number.isInteger(dwarfSynergyLevel) || dwarfSynergyLevel < 0) throw new Error("Invalid dwarf synergy level");
   return Math.min(MAX_SYNERGY_LEVEL, dwarfSynergyLevel);
 };
 
-export const getPlacementStatIncrease = (job: Job, dwarfSynergyLevel: number): number => {
-  getJobBaseStatIncrease(job);
-  return getJobBaseStatValue(job) + getDwarfPlacementBonus(dwarfSynergyLevel);
-};
+export const getPlacementStatIncrease = (job: Job, dwarfSynergyLevel: number): number =>
+  getJobBaseStatValue(job) + getDwarfPlacementBonus(dwarfSynergyLevel);
 
 export const getRerollLimit = (goblinSynergyLevel: number): number => {
-  if (!Number.isInteger(goblinSynergyLevel) || goblinSynergyLevel < 0) {
-    throw new Error("Invalid goblin synergy level");
-  }
+  if (!Number.isInteger(goblinSynergyLevel) || goblinSynergyLevel < 0) throw new Error("Invalid goblin synergy level");
   return DEFAULT_REROLLS_PER_TURN + Math.min(MAX_SYNERGY_LEVEL, goblinSynergyLevel);
 };
 
 export const getDragonScore = (round: number, dragonSynergyLevel: number): number => {
   if (!Number.isInteger(round) || round < 1) throw new Error("Invalid round");
-  if (!Number.isInteger(dragonSynergyLevel) || dragonSynergyLevel < 0) {
-    throw new Error("Invalid dragon synergy level");
-  }
+  if (!Number.isInteger(dragonSynergyLevel) || dragonSynergyLevel < 0) throw new Error("Invalid dragon synergy level");
   return round * Math.min(MAX_SYNERGY_LEVEL, dragonSynergyLevel);
 };
 
