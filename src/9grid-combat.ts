@@ -1,4 +1,4 @@
-import type { Job, Race, SynergyResult } from "./9grid";
+import type { Board, Job, Race, SynergyResult } from "./9grid";
 import {
   calculateHealerRecovery,
   calculateMagePower,
@@ -63,13 +63,21 @@ export const calculateRaceEffect = (race: Race, synergyLevel: number): number =>
   }
 };
 
-export const calculateCombatStats = (synergy: SynergyResult): CombatStats => {
+const countPlacedHealers = (board: Board): number =>
+  board.reduce((count, card) => count + (card?.job === "healer" ? 1 : 0), 0);
+
+export const calculateCombatStats = (
+  synergy: SynergyResult,
+  board?: Board,
+): CombatStats => {
   const warriorLevel = getSynergyLevel(synergy.jobs, "warrior");
   const tankLevel = getSynergyLevel(synergy.jobs, "tank");
   const healerLevel = getSynergyLevel(synergy.jobs, "healer");
   const mageLevel = getSynergyLevel(synergy.jobs, "mage");
   const elfLevel = getSynergyLevel(synergy.races, "elf");
-  const healerCount = synergy.lines.filter((line) => line.job === "healer").length * 3;
+  const healerCount = board
+    ? countPlacedHealers(board)
+    : synergy.lines.filter((line) => line.job === "healer").length * 3;
 
   const attack = calculateWarriorDamage(1, warriorLevel);
   const defense = calculateTankDefense(1, tankLevel);
@@ -91,19 +99,21 @@ export const calculateCombatStats = (synergy: SynergyResult): CombatStats => {
 
 export const calculateCombat = ({
   synergy,
+  board,
   playerHp,
   playerMaxHp,
   monsterHp,
   monsterAttack = 8,
 }: {
   synergy: SynergyResult;
+  board?: Board;
   playerHp: number;
   playerMaxHp: number;
   monsterHp: number;
   monsterAttack?: number;
   critRoll?: number;
 }): CombatResult => {
-  const playerStats = calculateCombatStats(synergy);
+  const playerStats = calculateCombatStats(synergy, board);
   const effectiveMaxHp = Math.max(playerMaxHp, playerStats.maxHp);
   const attacks = 1 + playerStats.extraAttacks;
   const playerDamage = Math.max(0, Math.floor((playerStats.attack + playerStats.skillDamage) * attacks));
