@@ -1,4 +1,11 @@
 import type { Job, Race, SynergyResult } from "./9grid";
+import {
+  calculateHealerRecovery,
+  calculateMagePower,
+  calculateTankDefense,
+  calculateWarriorDamage,
+  getElfAttackCountBonus,
+} from "./9grid-effects";
 
 export interface CombatStats {
   attack: number;
@@ -32,20 +39,27 @@ const getSynergyLevel = <T extends string>(
 
 export const calculateJobEffect = (job: Job, baseValue: number, synergyLevel: number): number => {
   const level = getSynergyLevel({ value: synergyLevel }, "value");
-  return baseValue * (level + 1);
+  switch (job) {
+    case "warrior":
+      return calculateWarriorDamage(baseValue, level);
+    case "tank":
+      return calculateTankDefense(baseValue, level);
+    case "healer":
+      return calculateHealerRecovery(baseValue, level);
+    case "mage":
+      return calculateMagePower(baseValue, level);
+  }
 };
 
 export const calculateRaceEffect = (race: Race, synergyLevel: number): number => {
   const level = getSynergyLevel({ value: synergyLevel }, "value");
   switch (race) {
     case "goblin":
-      return level;
-    case "elf":
-      return level;
     case "dwarf":
-      return level;
     case "dragon":
       return level;
+    case "elf":
+      return getElfAttackCountBonus(level);
   }
 };
 
@@ -57,16 +71,21 @@ export const calculateCombatStats = (synergy: SynergyResult): CombatStats => {
   const elfLevel = getSynergyLevel(synergy.races, "elf");
   const healerCount = synergy.lines.filter((line) => line.job === "healer").length * 3;
 
+  const attack = calculateWarriorDamage(1, warriorLevel);
+  const defense = calculateTankDefense(1, tankLevel);
+  const heal = calculateHealerRecovery(healerCount, healerLevel);
+  const skillDamage = calculateMagePower(1, mageLevel);
+
   return {
-    attack: calculateJobEffect("warrior", 1, warriorLevel),
-    defense: calculateJobEffect("tank", 1, tankLevel),
-    maxHp: 10 + calculateJobEffect("healer", healerCount, healerLevel),
-    heal: calculateJobEffect("healer", healerCount, healerLevel),
+    attack,
+    defense,
+    maxHp: 10 + heal,
+    heal,
     shield: 0,
     critChance: 0,
     damageReduction: 0,
-    extraAttacks: calculateRaceEffect("elf", elfLevel),
-    skillDamage: calculateJobEffect("mage", 1, mageLevel),
+    extraAttacks: getElfAttackCountBonus(elfLevel),
+    skillDamage,
   };
 };
 
