@@ -18,6 +18,7 @@ export interface CombatResult {
   monsterDamage: number;
   healing: number;
   shieldGained: number;
+  shieldAbsorbed: number;
   playerHpAfter: number;
   monsterHpAfter: number;
   monsterDefeated: boolean;
@@ -91,15 +92,18 @@ export const calculateCombat = ({
   const attacks = 1 + playerStats.extraAttacks;
   const playerDamage = Math.max(0, Math.floor((playerStats.attack + playerStats.skillDamage) * attacks * critMultiplier));
   const monsterHpAfter = Math.max(0, monsterHp - playerDamage);
+  const healing = playerStats.heal;
+  const shieldGained = playerStats.shield;
 
   if (monsterHpAfter === 0) {
     return {
       playerStats,
       playerDamage,
       monsterDamage: 0,
-      healing: playerStats.heal,
-      shieldGained: playerStats.shield,
-      playerHpAfter: Math.min(effectiveMaxHp, playerHp + playerStats.heal),
+      healing,
+      shieldGained,
+      shieldAbsorbed: 0,
+      playerHpAfter: Math.min(effectiveMaxHp, playerHp + healing),
       monsterHpAfter,
       monsterDefeated: true,
       playerDefeated: false,
@@ -107,9 +111,9 @@ export const calculateCombat = ({
   }
 
   const monsterDamage = Math.max(0, Math.floor(monsterAttack * (1 - playerStats.damageReduction) - playerStats.defense));
-  const healing = playerStats.heal;
-  const shieldGained = playerStats.shield;
-  const hpAfterDefense = Math.max(0, playerHp + healing - monsterDamage);
+  const shieldAbsorbed = Math.min(shieldGained, monsterDamage);
+  const hpDamage = monsterDamage - shieldAbsorbed;
+  const hpAfterDefense = Math.max(0, playerHp + healing - hpDamage);
   const playerHpAfter = Math.min(effectiveMaxHp, hpAfterDefense);
 
   return {
@@ -118,6 +122,7 @@ export const calculateCombat = ({
     monsterDamage,
     healing,
     shieldGained,
+    shieldAbsorbed,
     playerHpAfter,
     monsterHpAfter,
     monsterDefeated: false,

@@ -42,6 +42,21 @@ describe("9Grid combat", () => {
     expect(result.monsterHpAfter).toBe(46);
   });
 
+  it("applies wind extra attacks as an additional full attack", () => {
+    const board = [...line("wind", "mage"), ...Array(6).fill(null)];
+    const result = calculateCombat({
+      synergy: findBoardSynergy(board),
+      playerHp: 100,
+      playerMaxHp: 100,
+      monsterHp: 100,
+      monsterAttack: 0,
+      critRoll: 1,
+    });
+
+    expect(result.playerStats.extraAttacks).toBe(1);
+    expect(result.playerDamage).toBe(46);
+  });
+
   it("ends the exchange immediately when the monster is defeated", () => {
     const board = [...line("fire", "warrior"), ...Array(6).fill(null)];
     const result = calculateCombat({
@@ -57,7 +72,7 @@ describe("9Grid combat", () => {
     expect(result.monsterDamage).toBe(0);
   });
 
-  it("applies water/tank mitigation and healing without exceeding max hp", () => {
+  it("uses water/tank shield to absorb counter damage before HP", () => {
     const board = [...line("water", "tank"), ...Array(6).fill(null)];
     const result = calculateCombat({
       synergy: findBoardSynergy(board),
@@ -72,7 +87,8 @@ describe("9Grid combat", () => {
     expect(result.playerStats.defense).toBe(6);
     expect(result.healing).toBe(8);
     expect(result.shieldGained).toBe(12);
-    expect(result.playerHpAfter).toBe(93);
+    expect(result.shieldAbsorbed).toBe(10);
+    expect(result.playerHpAfter).toBe(100);
   });
 
   it("marks game defeat when the post-combat hp reaches zero", () => {

@@ -24,6 +24,33 @@ describe("9Grid turn state machine", () => {
     expect(state.board[0]?.id).toBe("a");
   });
 
+  it("allows combat directly from selection without changing the board", () => {
+    let state = startTurn(createInitialState(100, 100), { generateCards: generator });
+    state = resolveTurnCombat(state, { monsterAttack: 0 });
+    expect(state.round.phase).toBe("reroll");
+    expect(state.round.turn).toBe(2);
+    expect(state.board.every((card) => card === null)).toBe(true);
+  });
+
+  it("allows a selected card to replace or fill any slot in every round", () => {
+    let state = createInitialState(100, 100);
+    state = startTurn(state, { generateCards: generator });
+    state = chooseTurnCard(state, "a");
+    state = placeTurnCard(state, 0);
+    state = resolveTurnCombat(state, { monsterAttack: 0 });
+
+    state = startTurn(state, { generateCards: generator });
+    state = chooseTurnCard(state, "b");
+    state = placeTurnCard(state, 1);
+    expect(state.board[1]?.id).toBe("b");
+
+    state = resolveTurnCombat(state, { monsterAttack: 0 });
+    state = startTurn(state, { generateCards: generator });
+    state = chooseTurnCard(state, "c");
+    state = placeTurnCard(state, 0);
+    expect(state.board[0]?.id).toBe("c");
+  });
+
   it("rerolls only selected cards and keeps one reroll per turn", () => {
     let state = startTurn(createInitialState(), { generateCards: generator });
     const rerollGenerator = (count: number) => [createCard("replacement", "earth", "healer")].slice(0, count);

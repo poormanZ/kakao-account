@@ -81,7 +81,7 @@ export const placeTurnCard = (state: GameState, boardIndex: number): GameState =
   const card = state.round.candidates.cards.find((candidate) => candidate.id === state.round.candidates.selectedCardId);
   if (!card) throw new Error("Selected card is missing");
 
-  const nextBoard: Board = state.round.round === 1
+  const nextBoard: Board = state.board[boardIndex] === null
     ? placeCard(state.board, boardIndex, card)
     : replaceCard(state.board, boardIndex, card);
 
