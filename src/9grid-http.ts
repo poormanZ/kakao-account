@@ -15,6 +15,8 @@ export interface NineGridHttpEnv extends NineGridSessionEnv {
   NINEGRID_MONSTER_ATTACK?: string;
 }
 
+export type NineGridSessionRoute = "session" | "action";
+
 const json = (data: unknown, status = 200): Response =>
   Response.json(data, {
     status,
@@ -34,6 +36,16 @@ const parseBody = async (request: Request): Promise<unknown | null> => {
   }
 };
 
+const isSameOrigin = (request: Request): boolean => {
+  const origin = request.headers.get("Origin");
+  if (origin === null) return true;
+  try {
+    return origin === new URL(request.url).origin;
+  } catch {
+    return false;
+  }
+};
+
 const getMonsterAttack = (env: NineGridHttpEnv): number | undefined => {
   if (env.NINEGRID_MONSTER_ATTACK === undefined) return undefined;
   const value = Number(env.NINEGRID_MONSTER_ATTACK);
@@ -50,10 +62,12 @@ export const handleNineGridSession = async (
   request: Request,
   env: NineGridHttpEnv,
   userId: number,
+  route: NineGridSessionRoute,
 ): Promise<Response> => {
   if (!Number.isInteger(userId) || userId <= 0) return json({ error: "Unauthorized" }, 401);
 
-  if (request.method === "GET") {
+  if (route === "session") {
+    if (request.method !== "GET") return json({ error: "Method not allowed" }, 405);
     try {
       const state = await load9GridSession(env, userId);
       return json({ state });
@@ -62,9 +76,8 @@ export const handleNineGridSession = async (
     }
   }
 
-  if (request.method !== "POST") {
-    return json({ error: "Method not allowed" }, 405);
-  }
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
+  if (!isSameOrigin(request)) return json({ error: "Cross-site request rejected" }, 403);
 
   const body = await parseBody(request);
   if (body === null) return json({ error: "Invalid JSON body" }, 400);
