@@ -22,6 +22,7 @@ export interface NineGridActionDependencies {
 
 const RACES: readonly Race[] = ["goblin", "elf", "dwarf", "dragon"];
 const JOBS: readonly Job[] = ["tank", "warrior", "healer", "mage"];
+const BOARD_SIZE = 9;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -35,6 +36,7 @@ const isInteger = (value: unknown): value is number =>
 const parseIndexes = (value: unknown): number[] | null => {
   if (!Array.isArray(value) || value.length === 0 || value.length > 3) return null;
   if (!value.every(isInteger)) return null;
+  if (!value.every((index) => index >= 0 && index < 3)) return null;
   return value;
 };
 
@@ -56,7 +58,9 @@ export const parseNineGridAction = (value: unknown): NineGridAction => {
       if (!isNonEmptyString(value.cardId)) throw new Error("Invalid card id");
       return { type: "select", cardId: value.cardId };
     case "place":
-      if (!isInteger(value.boardIndex)) throw new Error("Invalid board index");
+      if (!isInteger(value.boardIndex) || value.boardIndex < 0 || value.boardIndex >= BOARD_SIZE) {
+        throw new Error("Invalid board index");
+      }
       return { type: "place", boardIndex: value.boardIndex };
     case "combat":
       if (Object.keys(value).length !== 1) throw new Error("Invalid combat action");
