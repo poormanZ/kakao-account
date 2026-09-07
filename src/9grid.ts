@@ -45,7 +45,6 @@ export interface RoundState {
 export interface GameState {
   board: Board;
   playerStats: PlayerStats;
-  placementStatIncreases: Array<number | null>;
   round: RoundState;
   maxClearedRound: number;
   gameOver: boolean;
@@ -71,7 +70,6 @@ export const createCard = (id: string, race: Race, job: Job): Card => ({ id, rac
 export const createInitialState = (playerMaxHp = 100, monsterMaxHp = 30): GameState => ({
   board: createEmptyBoard(),
   playerStats: { attack: 1, defense: 1, maxHp: playerMaxHp, mana: 1 },
-  placementStatIncreases: Array<number | null>(BOARD_SIZE).fill(null),
   round: {
     round: 1,
     turn: 1,
