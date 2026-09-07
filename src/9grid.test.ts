@@ -6,8 +6,11 @@ import {
   createInitialState,
   findBoardSynergy,
   getDwarfPlacementBonus,
+  getDragonScore,
   getJobBaseStatIncrease,
   getJobBaseStatValue,
+  getPlacementStatIncrease,
+  getRerollLimit,
   isBoardFull,
   placeCard,
   replaceCard,
@@ -49,6 +52,16 @@ describe("9Grid core state", () => {
     expect(result.cards.map((card) => card.id)).toEqual(["a", "d", "c"]);
     expect(result.rerollsUsed).toBe(1);
     expect(() => rerollCandidates(result.cards, [0], [goblinWarrior("e")], result.rerollsUsed)).toThrow("limit");
+  });
+
+  it("respects the Goblin synergy reroll limit", () => {
+    const candidates = [goblinWarrior("a")];
+    const replacement = [createCard("b", "elf", "tank")];
+    const result = rerollCandidates(candidates, [0], replacement, 0, getRerollLimit(2));
+    expect(result.rerollsUsed).toBe(1);
+    expect(getRerollLimit(0)).toBe(1);
+    expect(getRerollLimit(2)).toBe(3);
+    expect(getRerollLimit(99)).toBe(1 + MAX_SYNERGY_LEVEL);
   });
 
   it("selects exactly one candidate by id", () => {
@@ -94,6 +107,15 @@ describe("9Grid core state", () => {
     expect(getDwarfPlacementBonus(0)).toBe(0);
     expect(getDwarfPlacementBonus(3)).toBe(3);
     expect(getDwarfPlacementBonus(9)).toBe(MAX_SYNERGY_LEVEL);
+    expect(getPlacementStatIncrease("warrior", 0)).toBe(1);
+    expect(getPlacementStatIncrease("warrior", 2)).toBe(3);
     expect(() => getDwarfPlacementBonus(-1)).toThrow("Invalid");
+  });
+
+  it("calculates Dragon clear score from round and synergy", () => {
+    expect(getDragonScore(1, 0)).toBe(0);
+    expect(getDragonScore(4, 2)).toBe(8);
+    expect(getDragonScore(4, 99)).toBe(20);
+    expect(() => getDragonScore(0, 1)).toThrow("Invalid round");
   });
 });
