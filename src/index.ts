@@ -104,10 +104,6 @@ const parseJsonBody = async (request: Request): Promise<Record<string, unknown> 
   try { const body = await request.json(); if (!body || typeof body !== "object" || Array.isArray(body)) return null; return body as Record<string, unknown>; } catch { return null; }
 };
 
-const cleanupExpiredSessions = async (db: D1Database): Promise<void> => {
-  await db.prepare("DELETE FROM sessions WHERE expires_at <= CURRENT_TIMESTAMP").run();
-};
-
 const worker = {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
