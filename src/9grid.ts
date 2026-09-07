@@ -184,7 +184,10 @@ export const getJobBaseStatIncrease = (job: Job): keyof PlayerStats => {
   }
 };
 
-export const getJobBaseStatValue = (_job: Job): number => 1;
+export const getJobBaseStatValue = (job: Job): number => {
+  getJobBaseStatIncrease(job);
+  return 1;
+};
 
 export const getDwarfPlacementBonus = (dwarfSynergyLevel: number): number => {
   if (!Number.isInteger(dwarfSynergyLevel) || dwarfSynergyLevel < 0) {
