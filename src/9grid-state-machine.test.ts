@@ -18,10 +18,38 @@ describe("9Grid turn state machine", () => {
     expect(state.round.phase).toBe("placement");
     state = placeTurnCard(state, 0);
     expect(state.round.phase).toBe("combat");
+    expect(state.playerStats.attack).toBe(2);
     state = resolveTurnCombat(state, { monsterAttack: 1 });
     expect(state.round.phase).toBe("reroll");
     expect(state.round.turn).toBe(2);
     expect(state.board[0]?.id).toBe("a");
+  });
+
+  it("applies a job stat increase once and removes it when the slot is replaced", () => {
+    let state = createInitialState(100, 100);
+    state = startTurn(state, { generateCards: generator });
+    state = chooseTurnCard(state, "a");
+    state = placeTurnCard(state, 0);
+    expect(state.playerStats.attack).toBe(2);
+
+    state = resolveTurnCombat(state, { monsterAttack: 0 });
+    state = startTurn(state, { generateCards: generator });
+    state = chooseTurnCard(state, "b");
+    state = placeTurnCard(state, 0);
+    expect(state.playerStats.attack).toBe(1);
+    expect(state.playerStats.defense).toBe(2);
+    expect(state.placementStatIncreases[0]).toBe(1);
+  });
+
+  it("applies Dwarf synergy bonus using the synergy created by the placement", () => {
+    let state = createInitialState(100, 100);
+    state.board[0] = createCard("d1", "dwarf", "warrior");
+    state.board[1] = createCard("d2", "dwarf", "tank");
+    state = startTurn(state, { generateCards: () => [createCard("d3", "dwarf", "mage"), cards[0], cards[1]] });
+    state = chooseTurnCard(state, "d3");
+    state = placeTurnCard(state, 2);
+    expect(state.playerStats.mana).toBe(2);
+    expect(state.placementStatIncreases[2]).toBe(2);
   });
 
   it("allows combat directly from selection without changing the board", () => {
