@@ -52,6 +52,35 @@ describe("9Grid turn state machine", () => {
     expect(state.placementStatIncreases[2]).toBe(2);
   });
 
+  it("keeps current HP unchanged when replacing a Healer card with a non-Healer", () => {
+    let state = createInitialState(100, 100);
+    const healer = createCard("healer", "elf", "healer");
+    state = startTurn(state, { generateCards: () => [healer, cards[0], cards[1]] });
+    state = chooseTurnCard(state, "healer");
+    state = placeTurnCard(state, 0);
+    expect(state.playerStats.maxHp).toBe(101);
+    expect(state.round.playerMaxHp).toBe(101);
+    expect(state.round.playerHp).toBe(101);
+
+    state = resolveTurnCombat(state, { monsterAttack: 0 });
+    state = startTurn(state, { generateCards: generator });
+    state = chooseTurnCard(state, "a");
+    state = placeTurnCard(state, 0);
+    expect(state.playerStats.maxHp).toBe(100);
+    expect(state.round.playerMaxHp).toBe(100);
+    expect(state.round.playerHp).toBe(100);
+  });
+
+  it("uses actual placed Healer count for combat recovery", () => {
+    let state = createInitialState(100, 1000);
+    state.board[0] = createCard("h1", "goblin", "healer");
+    state.board[1] = createCard("h2", "elf", "healer");
+    state.round.playerHp = 50;
+    state = startTurn(state, { generateCards: generator });
+    state = resolveTurnCombat(state, { monsterAttack: 0 });
+    expect(state.round.playerHp).toBe(52);
+  });
+
   it("allows combat directly from selection without changing the board", () => {
     let state = startTurn(createInitialState(100, 100), { generateCards: generator });
     state = resolveTurnCombat(state, { monsterAttack: 0 });
