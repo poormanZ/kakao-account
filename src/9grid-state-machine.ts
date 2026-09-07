@@ -3,6 +3,7 @@ import {
   clearRound,
   createCard,
   findBoardSynergy,
+  getRerollLimit,
   placeCard,
   replaceCard,
   rerollCandidates,
@@ -11,7 +12,6 @@ import {
   type Card,
   type GameState,
   CARDS_PER_TURN,
-  DEFAULT_REROLLS_PER_TURN,
   MAX_TURNS_PER_ROUND,
 } from "./9grid";
 import { calculateCombat } from "./9grid-combat";
@@ -58,7 +58,9 @@ export const rerollTurnCandidates = (
   generateCards: CardGenerator,
 ): GameState => {
   if (state.round.phase !== "select") throw new Error("Candidates can only be rerolled during selection");
-  if (state.round.candidates.rerollsUsed >= DEFAULT_REROLLS_PER_TURN) {
+  const synergy = findBoardSynergy(state.board);
+  const rerollLimit = getRerollLimit(synergy.races.goblin ?? 0);
+  if (state.round.candidates.rerollsUsed >= rerollLimit) {
     throw new Error("Reroll limit reached");
   }
   const nextCards = generateCards(rerollIndexes.length);
@@ -67,6 +69,7 @@ export const rerollTurnCandidates = (
     rerollIndexes,
     nextCards,
     state.round.candidates.rerollsUsed,
+    rerollLimit,
   );
   return { ...state, round: { ...state.round, candidates } };
 };
@@ -103,6 +106,7 @@ export const resolveTurnCombat = (
     playerMaxHp: state.round.playerMaxHp,
     monsterHp: state.round.monsterHp,
     monsterAttack,
+    board: state.board,
   });
 
   const combatState: GameState = {
