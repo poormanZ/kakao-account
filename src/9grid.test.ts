@@ -1,121 +1,17 @@
 import { describe, expect, it } from "vitest";
-import {
-  MAX_SYNERGY_LEVEL,
-  createCard,
-  createEmptyBoard,
-  createInitialState,
-  findBoardSynergy,
-  getDwarfPlacementBonus,
-  getDragonScore,
-  getJobBaseStatIncrease,
-  getJobBaseStatValue,
-  getPlacementStatIncrease,
-  getRerollLimit,
-  isBoardFull,
-  placeCard,
-  replaceCard,
-  rerollCandidates,
-  selectCandidate,
-} from "./9grid";
-
+import { MAX_SYNERGY_LEVEL, createCard, createEmptyBoard, createInitialState, findBoardSynergy, getDwarfPlacementBonus, getDragonScore, getJobBaseStatIncrease, getJobBaseStatValue, getPlacementStatIncrease, getRerollLimit, isBoardFull, placeCard, replaceCard, rerollCandidates, selectCandidate } from "./9grid";
 const goblinWarrior = (id: string) => createCard(id, "goblin", "warrior");
-
-const filledBoard = () => [
-  goblinWarrior("a"), goblinWarrior("b"), goblinWarrior("c"),
-  createCard("d", "elf", "warrior"), createCard("e", "dwarf", "healer"), createCard("f", "dragon", "mage"),
-  createCard("g", "dragon", "warrior"), createCard("h", "elf", "tank"), createCard("i", "dwarf", "mage"),
-];
-
+const filledBoard = () => [goblinWarrior("a"), goblinWarrior("b"), goblinWarrior("c"), createCard("d", "elf", "warrior"), createCard("e", "dwarf", "healer"), createCard("f", "dragon", "mage"), createCard("g", "dragon", "warrior"), createCard("h", "elf", "tank"), createCard("i", "dwarf", "mage")];
 describe("9Grid core state", () => {
-  it("starts with an empty 3x3 board and round 1 turn 1", () => {
-    const state = createInitialState();
-    expect(state.board).toHaveLength(9);
-    expect(isBoardFull(state.board)).toBe(false);
-    expect(state.round.round).toBe(1);
-    expect(state.round.turn).toBe(1);
-    expect(state.gameOver).toBe(false);
-  });
-
-  it("places cards only into empty slots and replaces occupied slots", () => {
-    let board = createEmptyBoard();
-    board = placeCard(board, 0, goblinWarrior("a"));
-    expect(board[0]?.id).toBe("a");
-    expect(() => placeCard(board, 0, goblinWarrior("b"))).toThrow("already occupied");
-    board = replaceCard(board, 0, goblinWarrior("b"));
-    expect(board[0]?.id).toBe("b");
-    expect(() => replaceCard(board, 1, goblinWarrior("c"))).toThrow("empty");
-  });
-
-  it("rerolls only selected candidates once per turn", () => {
-    const candidates = [goblinWarrior("a"), createCard("b", "elf", "tank"), createCard("c", "dragon", "mage")];
-    const result = rerollCandidates(candidates, [1], [createCard("d", "dwarf", "healer")], 0);
-    expect(result.cards.map((card) => card.id)).toEqual(["a", "d", "c"]);
-    expect(result.rerollsUsed).toBe(1);
-    expect(() => rerollCandidates(result.cards, [0], [goblinWarrior("e")], result.rerollsUsed)).toThrow("limit");
-  });
-
-  it("respects the Goblin synergy reroll limit", () => {
-    const candidates = [goblinWarrior("a")];
-    const replacement = [createCard("b", "elf", "tank")];
-    const result = rerollCandidates(candidates, [0], replacement, 0, getRerollLimit(2));
-    expect(result.rerollsUsed).toBe(1);
-    expect(getRerollLimit(0)).toBe(1);
-    expect(getRerollLimit(2)).toBe(3);
-    expect(getRerollLimit(99)).toBe(1 + MAX_SYNERGY_LEVEL);
-  });
-
-  it("selects exactly one candidate by id", () => {
-    const state = { cards: [goblinWarrior("a"), goblinWarrior("b"), goblinWarrior("c")], rerollsUsed: 0, selectedCardId: null };
-    expect(selectCandidate(state, "b").selectedCardId).toBe("b");
-    expect(() => selectCandidate(state, "missing")).toThrow("candidate");
-  });
-
-  it("detects horizontal and vertical race/job synergies", () => {
-    const result = findBoardSynergy(filledBoard());
-    expect(result.lines).toHaveLength(2);
-    expect(result.lines[0]).toMatchObject({ axis: "row", index: 0, race: "goblin", job: "warrior" });
-    expect(result.races.goblin).toBe(1);
-    expect(result.jobs.warrior).toBe(2);
-    expect(result.lines.some((line) => line.axis === "column")).toBe(true);
-  });
-
-  it("caps each synergy at LV5", () => {
-    const board = Array.from({ length: 9 }, (_, index) => createCard(String(index), "goblin", "warrior"));
-    const result = findBoardSynergy(board);
-    expect(result.races.goblin).toBe(MAX_SYNERGY_LEVEL);
-    expect(result.jobs.warrior).toBe(MAX_SYNERGY_LEVEL);
-  });
-
-  it("does not count diagonals as synergy", () => {
-    const board = [
-      goblinWarrior("a"), createCard("b", "elf", "tank"), createCard("c", "dwarf", "mage"),
-      createCard("d", "elf", "healer"), goblinWarrior("e"), createCard("f", "dragon", "tank"),
-      createCard("g", "dwarf", "healer"), createCard("h", "dragon", "mage"), goblinWarrior("i"),
-    ];
-    expect(findBoardSynergy(board).lines).toHaveLength(0);
-  });
-
-  it("maps each job to its permanent base stat", () => {
-    expect(getJobBaseStatIncrease("warrior")).toBe("attack");
-    expect(getJobBaseStatIncrease("tank")).toBe("defense");
-    expect(getJobBaseStatIncrease("healer")).toBe("maxHp");
-    expect(getJobBaseStatIncrease("mage")).toBe("mana");
-    expect(getJobBaseStatValue("mage")).toBe(1);
-  });
-
-  it("uses dwarf synergy as an additional placement stat bonus", () => {
-    expect(getDwarfPlacementBonus(0)).toBe(0);
-    expect(getDwarfPlacementBonus(3)).toBe(3);
-    expect(getDwarfPlacementBonus(9)).toBe(MAX_SYNERGY_LEVEL);
-    expect(getPlacementStatIncrease("warrior", 0)).toBe(1);
-    expect(getPlacementStatIncrease("warrior", 2)).toBe(3);
-    expect(() => getDwarfPlacementBonus(-1)).toThrow("Invalid");
-  });
-
-  it("calculates Dragon clear score from round and synergy", () => {
-    expect(getDragonScore(1, 0)).toBe(0);
-    expect(getDragonScore(4, 2)).toBe(8);
-    expect(getDragonScore(4, 99)).toBe(20);
-    expect(() => getDragonScore(0, 1)).toThrow("Invalid round");
-  });
+  it("starts with an empty 3x3 board and round 1 turn 1", () => { const state = createInitialState(); expect(state.board).toHaveLength(9); expect(isBoardFull(state.board)).toBe(false); expect(state.round.round).toBe(1); expect(state.round.turn).toBe(1); expect(state.gameOver).toBe(false); });
+  it("places cards only into empty slots and replaces occupied slots", () => { let board = createEmptyBoard(); board = placeCard(board, 0, goblinWarrior("a")); expect(board[0]?.id).toBe("a"); expect(() => placeCard(board, 0, goblinWarrior("b"))).toThrow("already occupied"); board = replaceCard(board, 0, goblinWarrior("b")); expect(board[0]?.id).toBe("b"); expect(() => replaceCard(board, 1, goblinWarrior("c"))).toThrow("empty"); });
+  it("rerolls only selected candidates once per turn", () => { const candidates = [goblinWarrior("a"), createCard("b", "elf", "tank"), createCard("c", "dragon", "mage")]; const result = rerollCandidates(candidates, [1], [createCard("d", "dwarf", "healer")], 0); expect(result.cards.map((card) => card.id)).toEqual(["a", "d", "c"]); expect(result.rerollsUsed).toBe(1); expect(() => rerollCandidates(result.cards, [0], [goblinWarrior("e")], result.rerollsUsed)).toThrow("limit"); });
+  it("respects the Goblin synergy reroll limit", () => { const candidates = [goblinWarrior("a")]; const replacement = [createCard("b", "elf", "tank")]; const result = rerollCandidates(candidates, [0], replacement, 0, getRerollLimit(2)); expect(result.rerollsUsed).toBe(1); expect(getRerollLimit(0)).toBe(1); expect(getRerollLimit(2)).toBe(3); expect(getRerollLimit(99)).toBe(1 + MAX_SYNERGY_LEVEL); });
+  it("selects exactly one candidate by id", () => { const state = { cards: [goblinWarrior("a"), goblinWarrior("b"), goblinWarrior("c")], rerollsUsed: 0, selectedCardId: null }; expect(selectCandidate(state, "b").selectedCardId).toBe("b"); expect(() => selectCandidate(state, "missing")).toThrow("candidate"); });
+  it("detects horizontal and vertical race/job synergies", () => { const result = findBoardSynergy(filledBoard()); expect(result.lines).toHaveLength(2); expect(result.lines[0]).toMatchObject({ axis: "row", index: 0, race: "goblin", job: "warrior" }); expect(result.races.goblin).toBe(1); expect(result.jobs.warrior).toBe(2); expect(result.lines.some((line) => line.axis === "column")).toBe(true); });
+  it("caps each synergy at LV5", () => { const board = Array.from({ length: 9 }, (_, index) => createCard(String(index), "goblin", "warrior")); const result = findBoardSynergy(board); expect(result.races.goblin).toBe(MAX_SYNERGY_LEVEL); expect(result.jobs.warrior).toBe(MAX_SYNERGY_LEVEL); });
+  it("does not count diagonals as synergy", () => { const board = [goblinWarrior("a"), createCard("b", "elf", "tank"), createCard("c", "dwarf", "mage"), createCard("d", "elf", "healer"), goblinWarrior("e"), createCard("f", "dragon", "tank"), createCard("g", "dwarf", "healer"), createCard("h", "dragon", "mage"), goblinWarrior("i")]; expect(findBoardSynergy(board).lines).toHaveLength(0); });
+  it("maps each job to its permanent base stat", () => { expect(getJobBaseStatIncrease("warrior")).toBe("attack"); expect(getJobBaseStatIncrease("tank")).toBe("defense"); expect(getJobBaseStatIncrease("healer")).toBe("maxHp"); expect(getJobBaseStatIncrease("mage")).toBe("mana"); expect(getJobBaseStatValue("mage")).toBe(1); });
+  it("uses dwarf synergy as an additional placement stat bonus", () => { expect(getDwarfPlacementBonus(0)).toBe(0); expect(getDwarfPlacementBonus(3)).toBe(3); expect(getDwarfPlacementBonus(9)).toBe(MAX_SYNERGY_LEVEL); expect(getPlacementStatIncrease("warrior", 0)).toBe(2); expect(getPlacementStatIncrease("warrior", 2)).toBe(4); expect(() => getDwarfPlacementBonus(-1)).toThrow("Invalid"); });
+  it("calculates Dragon clear score from round and synergy", () => { expect(getDragonScore(1, 0)).toBe(0); expect(getDragonScore(4, 2)).toBe(8); expect(getDragonScore(4, 99)).toBe(20); expect(() => getDragonScore(0, 1)).toThrow("Invalid round"); });
 });
