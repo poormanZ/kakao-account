@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createCard, createInitialState } from "./9grid";
 import {
   applyNineGridAction,
+  createDefaultCardGenerator,
   parseNineGridAction,
 } from "./9grid-api";
 
@@ -72,5 +73,21 @@ describe("9Grid action adapter", () => {
         generateCards,
       }),
     ).toThrow("Card cannot be selected");
+  });
+
+  it("generates valid varied cards without client-controlled card data", () => {
+    const generator = createDefaultCardGenerator();
+    const generated = generator(9);
+
+    expect(generated).toHaveLength(9);
+    expect(new Set(generated.map((card) => card.id)).size).toBe(9);
+    expect(generated.every((card) => ["goblin", "elf", "dwarf", "dragon"].includes(card.race))).toBe(true);
+    expect(generated.every((card) => ["tank", "warrior", "healer", "mage"].includes(card.job))).toBe(true);
+  });
+
+  it("rejects unsafe card generation counts", () => {
+    const generator = createDefaultCardGenerator();
+    expect(() => generator(-1)).toThrow("Invalid card count");
+    expect(() => generator(10)).toThrow("Invalid card count");
   });
 });
