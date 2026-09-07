@@ -44,7 +44,7 @@ describe("9Grid core state", () => {
   });
 
   it("rerolls only selected candidates once per turn", () => {
-    const candidates = [goblinWarrior("a"), createCard("b", "elf", "tank"), createCard("c", "wind" as never, "mage")];
+    const candidates = [goblinWarrior("a"), createCard("b", "elf", "tank"), createCard("c", "dragon", "mage")];
     const result = rerollCandidates(candidates, [1], [createCard("d", "dwarf", "healer")], 0);
     expect(result.cards.map((card) => card.id)).toEqual(["a", "d", "c"]);
     expect(result.rerollsUsed).toBe(1);
