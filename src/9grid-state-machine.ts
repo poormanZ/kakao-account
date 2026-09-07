@@ -10,9 +10,11 @@ import {
   type Board,
   type Card,
   type GameState,
+  CARDS_PER_TURN,
+  DEFAULT_REROLLS_PER_TURN,
+  MAX_TURNS_PER_ROUND,
 } from "./9grid";
 import { calculateCombat } from "./9grid-combat";
-import { CARDS_PER_TURN, DEFAULT_REROLLS_PER_TURN, MAX_TURNS_PER_ROUND } from "./9grid";
 
 export interface CardGenerator {
   (count: number): Card[];
@@ -24,12 +26,11 @@ export interface TurnStartOptions {
 
 export interface CombatTurnOptions {
   monsterAttack?: number;
-  critRoll?: number;
 }
 
 const defaultCardGenerator: CardGenerator = (count) =>
   Array.from({ length: count }, (_, index) =>
-    createCard(`generated-${Date.now()}-${index}`, "fire", "warrior"),
+    createCard(`generated-${Date.now()}-${index}`, "goblin", "warrior"),
   );
 
 export const startTurn = (
@@ -90,7 +91,7 @@ export const placeTurnCard = (state: GameState, boardIndex: number): GameState =
 
 export const resolveTurnCombat = (
   state: GameState,
-  { monsterAttack = 8, critRoll = 1 }: CombatTurnOptions = {},
+  { monsterAttack = 8 }: CombatTurnOptions = {},
 ): GameState => {
   if (state.round.phase !== "select" && state.round.phase !== "placement" && state.round.phase !== "combat") {
     throw new Error("Combat is not ready");
@@ -102,7 +103,6 @@ export const resolveTurnCombat = (
     playerMaxHp: state.round.playerMaxHp,
     monsterHp: state.round.monsterHp,
     monsterAttack,
-    critRoll,
   });
 
   const combatState: GameState = {
