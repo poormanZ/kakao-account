@@ -26,7 +26,7 @@ async function selectCard(cardId){try{setState((await request("/api/games/9grid/
 async function place(boardIndex){if(!selectedCardId){log("PLACE: 먼저 카드를 선택하세요.","danger");return}try{setState((await request("/api/games/9grid/session/action",{method:"POST",body:JSON.stringify({type:"place",boardIndex})})).state);log("SERVER: placement applied")}catch(e){log(e.message,"danger")}}
 async function combat(){try{setState((await request("/api/games/9grid/session/action",{method:"POST",body:JSON.stringify({type:"combat"})})).state);log("SERVER: combat resolved")}catch(e){log(e.message,"danger")}}
 $("start").onclick=start;$("reroll").onclick=reroll;$("combat").onclick=combat;
-async function load(){try{setState((await request("/api/games/9grid/session",{method:"GET"})).state)}catch(e){log(e.message,"danger");render()}}
+async function load(){try{const response=await request("/api/games/9grid/session",{method:"GET"});if(response.state===null){await start();return}setState(response.state)}catch(e){log(e.message,"danger");render()}}
 load();
 </script></body></html>`;
   return new Response(html,{headers:{"Content-Type":"text/html; charset=utf-8","Cache-Control":"no-store","X-Content-Type-Options":"nosniff","X-Frame-Options":"DENY","Referrer-Policy":"no-referrer"}});
