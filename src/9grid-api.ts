@@ -1,4 +1,4 @@
-import type { Card, GameState } from "./9grid";
+import type { Card, GameState, Job, Race } from "./9grid";
 import {
   chooseTurnCard,
   placeTurnCard,
@@ -19,6 +19,9 @@ export interface NineGridActionDependencies {
   generateCards: CardGenerator;
   monsterAttack?: number;
 }
+
+const RACES: readonly Race[] = ["goblin", "elf", "dwarf", "dragon"];
+const JOBS: readonly Job[] = ["tank", "warrior", "healer", "mage"];
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -82,9 +85,20 @@ export const applyNineGridAction = (
   }
 };
 
-export const createDefaultCardGenerator = (): CardGenerator => (count: number): Card[] =>
-  Array.from({ length: count }, (_, index) => ({
-    id: `generated-${Date.now()}-${index}`,
-    race: "goblin",
-    job: "warrior",
+const randomIndex = (maxExclusive: number): number => {
+  const bytes = new Uint32Array(1);
+  crypto.getRandomValues(bytes);
+  return bytes[0] % maxExclusive;
+};
+
+export const createDefaultCardGenerator = (): CardGenerator => (count: number): Card[] => {
+  if (!Number.isInteger(count) || count < 0 || count > 9) {
+    throw new Error("Invalid card count");
+  }
+
+  return Array.from({ length: count }, () => ({
+    id: `generated-${crypto.randomUUID()}`,
+    race: RACES[randomIndex(RACES.length)],
+    job: JOBS[randomIndex(JOBS.length)],
   }));
+};
