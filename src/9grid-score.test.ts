@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createInitialState } from "./9grid";
 import { save9GridScore } from "./9grid-score";
+import type { AuthUser } from "./auth";
 
 class FakeDb {
   stateJson: string | null = null;
@@ -48,7 +49,7 @@ class FakeStatementBound {
 }
 
 const createEnv = (db: FakeDb) => ({ DB: db as unknown as D1Database });
-const user = { id: 7 };
+const user: AuthUser = { id: 7, nickname: null, profile_image_url: null };
 
 describe("9Grid score persistence", () => {
   it("rejects saving when no server session exists", async () => {
