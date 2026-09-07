@@ -1,4 +1,4 @@
-import type { Element, Job, SynergyResult } from "./9grid";
+import type { Job, Race, SynergyResult } from "./9grid";
 
 export interface CombatStats {
   attack: number;
@@ -25,50 +25,49 @@ export interface CombatResult {
   playerDefeated: boolean;
 }
 
-const ELEMENT_EFFECTS: Record<Element, Partial<CombatStats>> = {
-  fire: { attack: 6, critChance: 0.1, skillDamage: 3 },
-  water: { heal: 8, damageReduction: 0.1, shield: 4 },
-  wind: { extraAttacks: 1, critChance: 0.05 },
-  earth: { maxHp: 10, defense: 4, damageReduction: 0.05 },
+const getSynergyLevel = <T extends string>(
+  values: Partial<Record<T, number>>,
+  key: T,
+): number => Math.min(5, Math.max(0, values[key] ?? 0));
+
+export const calculateJobEffect = (job: Job, baseValue: number, synergyLevel: number): number => {
+  const level = getSynergyLevel({ value: synergyLevel }, "value");
+  return baseValue * (level + 1);
 };
 
-const JOB_EFFECTS: Record<Job, Partial<CombatStats>> = {
-  tank: { defense: 6, shield: 8, damageReduction: 0.1 },
-  warrior: { attack: 8, critChance: 0.05 },
-  healer: { heal: 12 },
-  mage: { skillDamage: 10, attack: 3 },
+export const calculateRaceEffect = (race: Race, synergyLevel: number): number => {
+  const level = getSynergyLevel({ value: synergyLevel }, "value");
+  switch (race) {
+    case "goblin":
+      return level;
+    case "elf":
+      return level;
+    case "dwarf":
+      return level;
+    case "dragon":
+      return level;
+  }
 };
 
 export const calculateCombatStats = (synergy: SynergyResult): CombatStats => {
-  const stats: CombatStats = {
-    attack: 10,
-    defense: 0,
-    maxHp: 100,
-    heal: 0,
+  const warriorLevel = getSynergyLevel(synergy.jobs, "warrior");
+  const tankLevel = getSynergyLevel(synergy.jobs, "tank");
+  const healerLevel = getSynergyLevel(synergy.jobs, "healer");
+  const mageLevel = getSynergyLevel(synergy.jobs, "mage");
+  const elfLevel = getSynergyLevel(synergy.races, "elf");
+  const healerCount = synergy.lines.filter((line) => line.job === "healer").length * 3;
+
+  return {
+    attack: calculateJobEffect("warrior", 1, warriorLevel),
+    defense: calculateJobEffect("tank", 1, tankLevel),
+    maxHp: 10 + calculateJobEffect("healer", healerCount, healerLevel),
+    heal: calculateJobEffect("healer", healerCount, healerLevel),
     shield: 0,
     critChance: 0,
     damageReduction: 0,
-    extraAttacks: 0,
-    skillDamage: 0,
+    extraAttacks: calculateRaceEffect("elf", elfLevel),
+    skillDamage: calculateJobEffect("mage", 1, mageLevel),
   };
-
-  for (const [element, count] of Object.entries(synergy.elements) as Array<[Element, number]>) {
-    const effect = ELEMENT_EFFECTS[element];
-    for (const [key, value] of Object.entries(effect) as Array<[keyof CombatStats, number]>) {
-      stats[key] += value * count;
-    }
-  }
-
-  for (const [job, count] of Object.entries(synergy.jobs) as Array<[Job, number]>) {
-    const effect = JOB_EFFECTS[job];
-    for (const [key, value] of Object.entries(effect) as Array<[keyof CombatStats, number]>) {
-      stats[key] += value * count;
-    }
-  }
-
-  stats.damageReduction = Math.min(stats.damageReduction, 0.75);
-  stats.critChance = Math.min(stats.critChance, 1);
-  return stats;
 };
 
 export const calculateCombat = ({
@@ -77,7 +76,6 @@ export const calculateCombat = ({
   playerMaxHp,
   monsterHp,
   monsterAttack = 8,
-  critRoll = 1,
 }: {
   synergy: SynergyResult;
   playerHp: number;
@@ -88,9 +86,8 @@ export const calculateCombat = ({
 }): CombatResult => {
   const playerStats = calculateCombatStats(synergy);
   const effectiveMaxHp = Math.max(playerMaxHp, playerStats.maxHp);
-  const critMultiplier = critRoll < playerStats.critChance ? 2 : 1;
   const attacks = 1 + playerStats.extraAttacks;
-  const playerDamage = Math.max(0, Math.floor((playerStats.attack + playerStats.skillDamage) * attacks * critMultiplier));
+  const playerDamage = Math.max(0, Math.floor((playerStats.attack + playerStats.skillDamage) * attacks));
   const monsterHpAfter = Math.max(0, monsterHp - playerDamage);
   const healing = playerStats.heal;
   const shieldGained = playerStats.shield;
@@ -110,7 +107,7 @@ export const calculateCombat = ({
     };
   }
 
-  const monsterDamage = Math.max(0, Math.floor(monsterAttack * (1 - playerStats.damageReduction) - playerStats.defense));
+  const monsterDamage = Math.max(0, Math.floor(monsterAttack - playerStats.defense));
   const shieldAbsorbed = Math.min(shieldGained, monsterDamage);
   const hpDamage = monsterDamage - shieldAbsorbed;
   const hpAfterDefense = Math.max(0, playerHp + healing - hpDamage);
