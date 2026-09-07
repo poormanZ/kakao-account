@@ -113,8 +113,9 @@ export const rerollCandidates = (
   rerollIndexes: number[],
   nextCards: Card[],
   rerollsUsed: number,
+  rerollLimit = DEFAULT_REROLLS_PER_TURN,
 ): CandidateState => {
-  if (rerollsUsed >= DEFAULT_REROLLS_PER_TURN) throw new Error("Reroll limit reached");
+  if (rerollsUsed >= rerollLimit) throw new Error("Reroll limit reached");
   if (rerollIndexes.length === 0) throw new Error("Select at least one card to reroll");
   if (nextCards.length !== rerollIndexes.length) throw new Error("Replacement card count mismatch");
 
@@ -194,6 +195,26 @@ export const getDwarfPlacementBonus = (dwarfSynergyLevel: number): number => {
     throw new Error("Invalid dwarf synergy level");
   }
   return Math.min(MAX_SYNERGY_LEVEL, dwarfSynergyLevel);
+};
+
+export const getPlacementStatIncrease = (job: Job, dwarfSynergyLevel: number): number => {
+  getJobBaseStatIncrease(job);
+  return getJobBaseStatValue(job) + getDwarfPlacementBonus(dwarfSynergyLevel);
+};
+
+export const getRerollLimit = (goblinSynergyLevel: number): number => {
+  if (!Number.isInteger(goblinSynergyLevel) || goblinSynergyLevel < 0) {
+    throw new Error("Invalid goblin synergy level");
+  }
+  return DEFAULT_REROLLS_PER_TURN + Math.min(MAX_SYNERGY_LEVEL, goblinSynergyLevel);
+};
+
+export const getDragonScore = (round: number, dragonSynergyLevel: number): number => {
+  if (!Number.isInteger(round) || round < 1) throw new Error("Invalid round");
+  if (!Number.isInteger(dragonSynergyLevel) || dragonSynergyLevel < 0) {
+    throw new Error("Invalid dragon synergy level");
+  }
+  return round * Math.min(MAX_SYNERGY_LEVEL, dragonSynergyLevel);
 };
 
 export const advanceTurn = (state: GameState): GameState => {
