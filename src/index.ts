@@ -224,6 +224,9 @@ const worker = {
 
     return json({ error: "Not found" }, { status: 404 }, secure);
   },
+  async scheduled(_controller: ScheduledController, env: Env): Promise<void> {
+    await env.DB.prepare("DELETE FROM sessions WHERE expires_at <= CURRENT_TIMESTAMP").run();
+  },
 };
 
 export default worker;
