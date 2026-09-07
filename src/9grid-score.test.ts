@@ -3,7 +3,7 @@ import { createInitialState } from "./9grid";
 import { save9GridScore } from "./9grid-score";
 
 class FakeDb {
-  private stateJson: string | null = null;
+  stateJson: string | null = null;
   insertedValues: unknown[] | null = null;
 
   prepare(query: string) {
