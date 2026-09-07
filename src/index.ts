@@ -136,7 +136,7 @@ const worker = {
     }
 
     if (url.pathname.startsWith("/api/games/9grid")) {
-      let user: UserRow | null = null;
+      let user: UserRow | null;
       try { user = await getAuthenticatedUser(request, env.DB, SESSION_COOKIE); }
       catch (error) { logError("9grid.user_lookup_failed", error, context); return json({ error: "Authentication service unavailable" }, { status: 503 }, secure); }
       if (!user) return json({ error: "Unauthorized" }, { status: 401 }, secure);
