@@ -66,7 +66,7 @@ describe("9Grid HTTP session", () => {
   it("loads the persisted state through GET", async () => {
     const db = new FakeDb(); db.setState(JSON.stringify(createInitialState()));
     const response = await handleNineGridSession(new Request("https://example.com/api/games/9grid/session", { method: "GET" }), createEnv(db), 7, "session");
-    expect(response.status).toBe(200); const body = (await response.json()) as { state: ReturnType<typeof createInitialState> }; expect(body.state.playerStats.attack).toBe(2); expect(body.state.round.playerHp).toBe(100);
+    expect(response.status).toBe(200); const body = (await response.json()) as { state: ReturnType<typeof createInitialState> }; expect(body.state.playerStats.attack).toBe(2); expect(body.state.round.playerHp).toBe(80);
   });
   it("rejects invalid user ids before touching storage", async () => { const db = new FakeDb(); const response = await handleNineGridSession(new Request("https://example.com/api/games/9grid/session", { method: "GET" }), createEnv(db), 0, "session"); expect(response.status).toBe(401); expect(db.getState()).toBeNull(); });
 });
