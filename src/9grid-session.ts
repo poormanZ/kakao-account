@@ -13,6 +13,9 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const isFiniteNonNegativeNumber = (value: unknown): value is number =>
   typeof value === "number" && Number.isFinite(value) && value >= 0;
 
+const isNonNegativeInteger = (value: unknown): value is number =>
+  typeof value === "number" && Number.isInteger(value) && value >= 0;
+
 const isCard = (value: unknown): value is Card => {
   if (!isRecord(value)) return false;
   return (
@@ -47,7 +50,7 @@ const isGameState = (value: unknown): value is GameState => {
   if (!round.candidates.cards.every(isCard)) return false;
   if (!isFiniteNonNegativeNumber(round.candidates.rerollsUsed)) return false;
   if (round.candidates.selectedCardId !== null && typeof round.candidates.selectedCardId !== "string") return false;
-  return Number.isInteger(value.maxClearedRound) && value.maxClearedRound >= 0 && typeof value.gameOver === "boolean";
+  return isNonNegativeInteger(value.maxClearedRound) && typeof value.gameOver === "boolean";
 };
 
 export const load9GridSession = async (
