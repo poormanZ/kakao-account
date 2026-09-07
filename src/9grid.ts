@@ -3,14 +3,22 @@ export const BOARD_SIZE = GRID_SIZE * GRID_SIZE;
 export const CARDS_PER_TURN = 3;
 export const MAX_TURNS_PER_ROUND = 9;
 export const DEFAULT_REROLLS_PER_TURN = 1;
+export const MAX_SYNERGY_LEVEL = 5;
 
-export type Element = "fire" | "water" | "wind" | "earth";
+export type Race = "goblin" | "elf" | "dwarf" | "dragon";
 export type Job = "tank" | "warrior" | "healer" | "mage";
 
 export interface Card {
   id: string;
-  element: Element;
+  race: Race;
   job: Job;
+}
+
+export interface PlayerStats {
+  attack: number;
+  defense: number;
+  maxHp: number;
+  mana: number;
 }
 
 export type Board = Array<Card | null>;
@@ -44,19 +52,19 @@ export interface GameState {
 export interface SynergyLine {
   axis: "row" | "column";
   index: number;
-  element: Element | null;
+  race: Race | null;
   job: Job | null;
 }
 
 export interface SynergyResult {
   lines: SynergyLine[];
-  elements: Partial<Record<Element, number>>;
+  races: Partial<Record<Race, number>>;
   jobs: Partial<Record<Job, number>>;
 }
 
 export const createEmptyBoard = (): Board => Array<Card | null>(BOARD_SIZE).fill(null);
 
-export const createCard = (id: string, element: Element, job: Job): Card => ({ id, element, job });
+export const createCard = (id: string, race: Race, job: Job): Card => ({ id, race, job });
 
 export const createInitialState = (playerMaxHp = 100, monsterMaxHp = 30): GameState => ({
   board: createEmptyBoard(),
@@ -126,32 +134,63 @@ export const selectCandidate = (state: CandidateState, cardId: string): Candidat
   return { ...state, selectedCardId: cardId };
 };
 
+const incrementSynergy = <T extends string>(
+  values: Partial<Record<T, number>>,
+  key: T,
+): void => {
+  values[key] = Math.min(MAX_SYNERGY_LEVEL, (values[key] ?? 0) + 1);
+};
+
 export const findBoardSynergy = (board: Board): SynergyResult => {
   const lines: SynergyLine[] = [];
-  const elements: Partial<Record<Element, number>> = {};
+  const races: Partial<Record<Race, number>> = {};
   const jobs: Partial<Record<Job, number>> = {};
 
   const addLine = (axis: "row" | "column", index: number, cards: Card[]): void => {
-    if (cards.length !== GRID_SIZE || cards.some((card) => card === undefined)) return;
-    const element = cards.every((card) => card.element === cards[0].element) ? cards[0].element : null;
+    if (cards.length !== GRID_SIZE || cards.some((card) => card === null)) return;
+
+    const race = cards.every((card) => card.race === cards[0].race) ? cards[0].race : null;
     const job = cards.every((card) => card.job === cards[0].job) ? cards[0].job : null;
-    if (element === null && job === null) return;
-    lines.push({ axis, index, element, job });
-    if (element) elements[element] = (elements[element] ?? 0) + 1;
-    if (job) jobs[job] = (jobs[job] ?? 0) + 1;
+    if (race === null && job === null) return;
+
+    lines.push({ axis, index, race, job });
+    if (race !== null) incrementSynergy(races, race);
+    if (job !== null) incrementSynergy(jobs, job);
   };
 
   for (let row = 0; row < GRID_SIZE; row += 1) {
-    const cards = board.slice(row * GRID_SIZE, row * GRID_SIZE + GRID_SIZE) as Card[];
-    if (cards.every(Boolean)) addLine("row", row, cards);
+    const cards = board.slice(row * GRID_SIZE, row * GRID_SIZE + GRID_SIZE);
+    if (cards.every(Boolean)) addLine("row", row, cards as Card[]);
   }
 
   for (let column = 0; column < GRID_SIZE; column += 1) {
-    const cards = [board[column], board[column + GRID_SIZE], board[column + GRID_SIZE * 2]] as Card[];
-    if (cards.every(Boolean)) addLine("column", column, cards);
+    const cards = [board[column], board[column + GRID_SIZE], board[column + GRID_SIZE * 2]];
+    if (cards.every(Boolean)) addLine("column", column, cards as Card[]);
   }
 
-  return { lines, elements, jobs };
+  return { lines, races, jobs };
+};
+
+export const getJobBaseStatIncrease = (job: Job): keyof PlayerStats => {
+  switch (job) {
+    case "warrior":
+      return "attack";
+    case "tank":
+      return "defense";
+    case "healer":
+      return "maxHp";
+    case "mage":
+      return "mana";
+  }
+};
+
+export const getJobBaseStatValue = (_job: Job): number => 1;
+
+export const getDwarfPlacementBonus = (dwarfSynergyLevel: number): number => {
+  if (!Number.isInteger(dwarfSynergyLevel) || dwarfSynergyLevel < 0) {
+    throw new Error("Invalid dwarf synergy level");
+  }
+  return Math.min(MAX_SYNERGY_LEVEL, dwarfSynergyLevel);
 };
 
 export const advanceTurn = (state: GameState): GameState => {
