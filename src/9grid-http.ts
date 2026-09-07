@@ -20,6 +20,8 @@ export interface NineGridHttpEnv extends NineGridSessionEnv {
 
 export type NineGridSessionRoute = "session" | "action";
 
+const DEFAULT_MONSTER_ATTACK = 8;
+
 const json = (data: unknown, status = 200): Response =>
   Response.json(data, {
     status,
@@ -49,10 +51,10 @@ const isSameOrigin = (request: Request): boolean => {
   }
 };
 
-const getMonsterAttack = (env: NineGridHttpEnv): number | undefined => {
-  if (env.NINEGRID_MONSTER_ATTACK === undefined) return undefined;
+const getMonsterAttack = (env: NineGridHttpEnv): number => {
+  if (env.NINEGRID_MONSTER_ATTACK === undefined) return DEFAULT_MONSTER_ATTACK;
   const value = Number(env.NINEGRID_MONSTER_ATTACK);
-  return Number.isFinite(value) && value >= 0 ? value : undefined;
+  return Number.isFinite(value) && value >= 0 ? value : DEFAULT_MONSTER_ATTACK;
 };
 
 const applyAction = (state: GameState, action: NineGridAction, env: NineGridHttpEnv): GameState =>
@@ -73,7 +75,7 @@ export const handleNineGridSession = async (
     if (request.method !== "GET") return json({ error: "Method not allowed" }, 405);
     try {
       const state = await load9GridSession(env, userId);
-      return json({ state });
+      return json({ state, monsterAttack: getMonsterAttack(env) });
     } catch {
       return json({ error: "9Grid session unavailable" }, 503);
     }
@@ -103,7 +105,7 @@ export const handleNineGridSession = async (
     const saved = stored === null
       ? await create9GridSession(env, userId, nextState)
       : await update9GridSession(env, userId, nextState, stored.version);
-    return json({ state: saved.state });
+    return json({ state: saved.state, monsterAttack: getMonsterAttack(env) });
   } catch (error) {
     if (error instanceof NineGridSessionConflictError) {
       return json({ error: "9Grid session changed; retry the action" }, 409);
