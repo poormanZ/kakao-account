@@ -1,5 +1,6 @@
 import { getAuthenticatedUser, getCookie, getSessionUser, hashSessionId, type AuthUser } from "./auth";
 import { render9GridPage } from "./9grid-ui";
+import { handleNineGridSession } from "./9grid-http";
 import { get9GridBestScore, get9GridMyRank, get9GridRanking, save9GridScore } from "./9grid-score";
 import { renderPortalPage } from "./portal-ui";
 import { logError, logInfo, logWarn } from "./logger";
@@ -11,6 +12,7 @@ export interface Env {
   KAKAO_REDIRECT_URI: string;
   KAKAO_REST_API_KEY?: string;
   KAKAO_CLIENT_SECRET?: string;
+  NINEGRID_MONSTER_ATTACK?: string;
 }
 
 const SESSION_COOKIE = "kakao_account_session";
@@ -134,10 +136,12 @@ const worker = {
     }
 
     if (url.pathname.startsWith("/api/games/9grid")) {
-      let user: UserRow | null;
+      let user: UserRow;
       try { user = await getAuthenticatedUser(request, env.DB, SESSION_COOKIE); }
       catch (error) { logError("9grid.user_lookup_failed", error, context); return json({ error: "Authentication service unavailable" }, { status: 503 }, secure); }
       if (!user) return json({ error: "Unauthorized" }, { status: 401 }, secure);
+      if (url.pathname === "/api/games/9grid/session") return handleNineGridSession(request, env, user.id);
+      if (url.pathname === "/api/games/9grid/session/action") return handleNineGridSession(request, env, user.id);
       if (request.method === "POST" && url.pathname === "/api/games/9grid/scores") return save9GridScore(request, env, user);
       if (request.method === "GET" && url.pathname === "/api/games/9grid/best") return get9GridBestScore(env, user);
       if (request.method === "GET" && url.pathname === "/api/games/9grid/my-rank") return get9GridMyRank(env, user);
