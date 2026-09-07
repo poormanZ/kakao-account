@@ -42,7 +42,7 @@ describe("9Grid action adapter", () => {
     expect(() => parseNineGridAction({ type: "unknown" })).toThrow("Unsupported 9Grid action");
   });
 
-  it("dispatches validated actions through the state machine", () => {
+  it("dispatches validated actions and deals the next candidates after combat", () => {
     let state = createInitialState(100, 100);
     state = applyNineGridAction(state, parseNineGridAction({ type: "start" }), {
       generateCards,
@@ -62,8 +62,10 @@ describe("9Grid action adapter", () => {
       generateCards,
       monsterAttack: 0,
     });
-    expect(state.round.phase).toBe("reroll");
+    expect(state.round.phase).toBe("select");
     expect(state.round.turn).toBe(2);
+    expect(state.round.candidates.cards).toHaveLength(3);
+    expect(state.round.candidates.selectedCardId).toBeNull();
   });
 
   it("does not execute an action when its state-machine precondition fails", () => {
