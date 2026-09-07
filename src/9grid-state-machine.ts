@@ -86,15 +86,14 @@ const applyPlacementStats = (state: GameState, boardIndex: number, card: Card, n
   }
   nextStats[statKey] += increase;
 
-  const nextRound = { ...state.round };
-  if (statKey === "maxHp") {
-    nextRound.playerMaxHp = nextStats.maxHp;
-    const previousHealerIncrease = previousCard?.job === "healer" ? previousIncrease : 0;
-    nextRound.playerHp = Math.min(nextRound.playerMaxHp, nextRound.playerHp + increase - previousHealerIncrease);
-  }
-
+  const nextRound = {
+    ...state.round,
+    playerMaxHp: nextStats.maxHp,
+    playerHp: Math.min(state.round.playerHp, nextStats.maxHp),
+  };
   const placementStatIncreases = [...state.placementStatIncreases];
   placementStatIncreases[boardIndex] = increase;
+
   return {
     ...state,
     board: nextBoard,
