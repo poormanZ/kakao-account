@@ -37,14 +37,16 @@ class FakeStatementBound {
   async first<T>(): Promise<T | null> {
     if (!this.query.startsWith("SELECT")) return null;
     const stateJson = this.db.stateJson;
-    return stateJson === null ? null : ({ state_json: stateJson } as T);
+    return stateJson === null
+      ? null
+      : ({ state_json: stateJson, version: 1 } as T);
   }
 
-  async run(): Promise<{ success: true }> {
+  async run(): Promise<{ success: true; meta: { changes: number } }> {
     if (this.query.startsWith("INSERT") && this.query.includes('"9grid_scores"')) {
       this.db.insertedValues = this.values;
     }
-    return { success: true };
+    return { success: true, meta: { changes: 1 } };
   }
 }
 
