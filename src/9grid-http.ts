@@ -6,8 +6,11 @@ import {
   type NineGridAction,
 } from "./9grid-api";
 import {
+  create9GridSession,
   load9GridSession,
-  save9GridSession,
+  load9GridSessionRecord,
+  NineGridSessionConflictError,
+  update9GridSession,
   type NineGridSessionEnv,
 } from "./9grid-session";
 
@@ -90,16 +93,21 @@ export const handleNineGridSession = async (
   }
 
   try {
-    const storedState = await load9GridSession(env, userId);
-    if (storedState === null && action.type !== "start") {
+    const stored = await load9GridSessionRecord(env, userId);
+    if (stored === null && action.type !== "start") {
       return json({ error: "9Grid session not found" }, 404);
     }
 
-    const state = storedState ?? createInitialState();
+    const state = stored?.state ?? createInitialState();
     const nextState = applyAction(state, action, env);
-    await save9GridSession(env, userId, nextState);
-    return json({ state: nextState });
+    const saved = stored === null
+      ? await create9GridSession(env, userId, nextState)
+      : await update9GridSession(env, userId, nextState, stored.version);
+    return json({ state: saved.state });
   } catch (error) {
+    if (error instanceof NineGridSessionConflictError) {
+      return json({ error: "9Grid session changed; retry the action" }, 409);
+    }
     if (error instanceof Error && error.message.startsWith("Invalid ")) {
       return json({ error: "Invalid 9Grid state transition" }, 400);
     }
