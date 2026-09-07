@@ -43,7 +43,14 @@ export const startTurn = (
   if (state.round.phase !== "reroll") throw new Error("Turn has already started");
   const cards = generateCards(CARDS_PER_TURN);
   if (cards.length !== CARDS_PER_TURN) throw new Error("Card generator must return exactly three cards");
-  return { ...state, round: { ...state.round, phase: "select", candidates: { cards, rerollsUsed: 0, selectedCardId: null } } };
+  return {
+    ...state,
+    round: {
+      ...state.round,
+      phase: "select",
+      candidates: { cards, rerollsUsed: 0, selectedCardId: null },
+    },
+  };
 };
 
 export const rerollTurnCandidates = (
@@ -72,18 +79,11 @@ export const chooseTurnCard = (state: GameState, cardId: string): GameState => {
   return { ...state, round: { ...state.round, phase: "placement", candidates } };
 };
 
-const applyPlacementStats = (state: GameState, boardIndex: number, card: Card, nextBoard: Board): GameState => {
-  const previousCard = state.board[boardIndex];
-  const previousIncrease = state.placementStatIncreases[boardIndex] ?? 0;
+const applyPlacementStats = (state: GameState, card: Card, nextBoard: Board): GameState => {
   const nextSynergy = findBoardSynergy(nextBoard);
   const increase = getPlacementStatIncrease(card.job, nextSynergy.races.dwarf ?? 0);
   const statKey = getJobBaseStatIncrease(card.job);
   const nextStats = { ...state.playerStats };
-
-  if (previousCard) {
-    const previousStatKey = getJobBaseStatIncrease(previousCard.job);
-    nextStats[previousStatKey] -= previousIncrease;
-  }
   nextStats[statKey] += increase;
 
   const nextRound = {
@@ -91,14 +91,11 @@ const applyPlacementStats = (state: GameState, boardIndex: number, card: Card, n
     playerMaxHp: nextStats.maxHp,
     playerHp: Math.min(state.round.playerHp, nextStats.maxHp),
   };
-  const placementStatIncreases = [...state.placementStatIncreases];
-  placementStatIncreases[boardIndex] = increase;
 
   return {
     ...state,
     board: nextBoard,
     playerStats: nextStats,
-    placementStatIncreases,
     round: { ...nextRound, phase: "combat" },
   };
 };
@@ -110,7 +107,7 @@ export const placeTurnCard = (state: GameState, boardIndex: number): GameState =
   const nextBoard: Board = state.board[boardIndex] === null
     ? placeCard(state.board, boardIndex, card)
     : replaceCard(state.board, boardIndex, card);
-  return applyPlacementStats(state, boardIndex, card, nextBoard);
+  return applyPlacementStats(state, card, nextBoard);
 };
 
 export const resolveTurnCombat = (
