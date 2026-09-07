@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createCard, findBoardSynergy } from "./9grid";
+import { createCard, createEmptyBoard, findBoardSynergy } from "./9grid";
 import { calculateCombat, calculateCombatStats } from "./9grid-combat";
 
 const line = (
@@ -37,6 +37,16 @@ describe("9Grid combat", () => {
     const result = calculateCombatStats(synergy);
 
     expect(result.heal).toBe(6);
+  });
+
+  it("counts placed Healer cards even without a Healer synergy line", () => {
+    const board = createEmptyBoard();
+    board[0] = createCard("1", "goblin", "healer");
+    board[1] = createCard("2", "elf", "healer");
+    const synergy = findBoardSynergy(board);
+    const result = calculateCombatStats(synergy, board);
+
+    expect(result.heal).toBe(2);
   });
 
   it("uses Mage synergy level for mana-based combat power", () => {
