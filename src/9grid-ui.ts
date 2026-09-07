@@ -2,18 +2,6 @@ import type { AuthUser } from "./auth";
 
 const RACES = ["goblin", "elf", "dwarf", "dragon"] as const;
 const JOBS = ["warrior", "tank", "healer", "mage"] as const;
-const RACE_NAMES: Record<(typeof RACES)[number], string> = {
-  goblin: "GOBLIN",
-  elf: "ELF",
-  dwarf: "DWARF",
-  dragon: "DRAGON",
-};
-const JOB_NAMES: Record<(typeof JOBS)[number], string> = {
-  warrior: "WARRIOR",
-  tank: "TANK",
-  healer: "HEALER",
-  mage: "MAGE",
-};
 
 const esc = (value: string): string => value.replace(/[&<>]/g, (char) => {
   switch (char) {
