@@ -3,9 +3,9 @@ import { createCard, createInitialState } from "./9grid";
 import { chooseTurnCard, placeTurnCard, resolveTurnCombat, rerollTurnCandidates, startTurn } from "./9grid-state-machine";
 
 const cards = [
-  createCard("a", "fire", "warrior"),
-  createCard("b", "water", "tank"),
-  createCard("c", "wind", "mage"),
+  createCard("a", "goblin", "warrior"),
+  createCard("b", "elf", "tank"),
+  createCard("c", "dwarf", "mage"),
 ];
 const generator = (count: number) => cards.slice(0, count);
 
@@ -53,7 +53,7 @@ describe("9Grid turn state machine", () => {
 
   it("rerolls only selected cards and keeps one reroll per turn", () => {
     let state = startTurn(createInitialState(), { generateCards: generator });
-    const rerollGenerator = (count: number) => [createCard("replacement", "earth", "healer")].slice(0, count);
+    const rerollGenerator = (count: number) => [createCard("replacement", "dragon", "healer")].slice(0, count);
     state = rerollTurnCandidates(state, [1], rerollGenerator);
     expect(state.round.candidates.cards.map((card) => card.id)).toEqual(["a", "replacement", "c"]);
     expect(() => rerollTurnCandidates(state, [0], rerollGenerator)).toThrow("limit");
