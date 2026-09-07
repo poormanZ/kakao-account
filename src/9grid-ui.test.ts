@@ -1,4 +1,3 @@
-import { Script } from "node:vm";
 import { describe, expect, it } from "vitest";
 import { render9GridPage } from "./9grid-ui";
 
@@ -14,7 +13,7 @@ describe("9Grid UI", () => {
     const html = await response.text();
     const script = extractScript(html);
 
-    expect(() => new Script(script)).not.toThrow();
+    expect(() => new Function(script)).not.toThrow();
     expect(html).toContain("/api/games/9grid/session");
     expect(html).toContain("/api/games/9grid/session/action");
   });
