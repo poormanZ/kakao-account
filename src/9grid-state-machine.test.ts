@@ -51,7 +51,22 @@ describe("9Grid turn state machine", () => {
     expect(state.board[0]?.id).toBe("c");
   });
 
-  it("rerolls only selected cards and keeps one reroll per turn", () => {
+  it("allows Goblin synergy to increase the reroll limit", () => {
+    let state = createInitialState();
+    state.board[0] = createCard("g1", "goblin", "warrior");
+    state.board[1] = createCard("g2", "goblin", "warrior");
+    state.board[2] = createCard("g3", "goblin", "warrior");
+    state = startTurn(state, { generateCards: generator });
+    const rerollGenerator = (count: number) =>
+      Array.from({ length: count }, (_, index) => createCard(`replacement-${index}`, "dragon", "healer"));
+
+    state = rerollTurnCandidates(state, [0], rerollGenerator);
+    state = rerollTurnCandidates(state, [1], rerollGenerator);
+    expect(state.round.candidates.rerollsUsed).toBe(2);
+    expect(() => rerollTurnCandidates(state, [2], rerollGenerator)).toThrow("limit");
+  });
+
+  it("rerolls only selected cards and keeps one reroll per turn without Goblin synergy", () => {
     let state = startTurn(createInitialState(), { generateCards: generator });
     const rerollGenerator = (count: number) => [createCard("replacement", "dragon", "healer")].slice(0, count);
     state = rerollTurnCandidates(state, [1], rerollGenerator);
