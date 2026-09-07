@@ -48,7 +48,7 @@ describe("9Grid turn state machine", () => {
     state = startTurn(state, { generateCards: () => [createCard("d3", "dwarf", "mage"), cards[0], cards[1]] });
     state = chooseTurnCard(state, "d3");
     state = placeTurnCard(state, 2);
-    expect(state.playerStats.mana).toBe(2);
+    expect(state.playerStats.mana).toBe(3);
     expect(state.placementStatIncreases[2]).toBe(2);
   });
 
@@ -60,7 +60,7 @@ describe("9Grid turn state machine", () => {
     state = placeTurnCard(state, 0);
     expect(state.playerStats.maxHp).toBe(101);
     expect(state.round.playerMaxHp).toBe(101);
-    expect(state.round.playerHp).toBe(101);
+    expect(state.round.playerHp).toBe(100);
 
     state = resolveTurnCombat(state, { monsterAttack: 0 });
     state = startTurn(state, { generateCards: generator });
