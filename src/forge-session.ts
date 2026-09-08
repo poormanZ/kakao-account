@@ -45,7 +45,8 @@ const parseShopWeapons = (value: string): ForgeShopWeapon[] => {
   return parsed;
 };
 export const loadForgeSession = async (env: ForgeSessionEnv, accountUserId: number): Promise<ForgeSessionRecord | null> => {
-  const row = await env.GAME_DB.prepare("SELECT gold, current_weapon_json, shop_weapons_json, skills_json, version FROM forge_game_states WHERE account_user_id = ? LIMIT 1")
+  const db = env.GAME_DB.withSession("first-primary");
+  const row = await db.prepare("SELECT gold, current_weapon_json, shop_weapons_json, skills_json, version FROM forge_game_states WHERE account_user_id = ? LIMIT 1")
     .bind(accountUserId).first<{ gold: number; current_weapon_json: string; shop_weapons_json: string; skills_json: string; version: number }>();
   if (!row) return null;
   if (!isNonNegativeInteger(row.gold) || !Number.isInteger(row.version) || row.version <= 0) throw new Error("Stored forge session metadata is invalid");
@@ -59,7 +60,8 @@ export const createForgeSession = async (env: ForgeSessionEnv, accountUserId: nu
   if (!Number.isInteger(accountUserId) || accountUserId <= 0) throw new Error("Invalid account user id");
   if (shopWeapons.length !== 3 || !shopWeapons.every(isShopWeapon)) throw new Error("Invalid forge shop");
   const state = createInitialForgeState();
-  await env.GAME_DB.prepare("INSERT INTO forge_game_states (account_user_id, gold, current_weapon_json, shop_weapons_json, skills_json, version, updated_at) VALUES (?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP)")
+  const db = env.GAME_DB.withSession("first-primary");
+  await db.prepare("INSERT INTO forge_game_states (account_user_id, gold, current_weapon_json, shop_weapons_json, skills_json, version, updated_at) VALUES (?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP)")
     .bind(accountUserId, state.gold, JSON.stringify(state.currentWeapon), JSON.stringify(shopWeapons), JSON.stringify(state.skills)).run();
   return { state, shopWeapons, version: 1 };
 };
@@ -68,7 +70,8 @@ export const updateForgeSession = async (env: ForgeSessionEnv, accountUserId: nu
   if (!isForgeState(state) || shopWeapons.length !== 3 || !shopWeapons.every(isShopWeapon)) throw new Error("Invalid forge session");
   if (!Number.isInteger(expectedVersion) || expectedVersion <= 0) throw new Error("Invalid forge session version");
   const nextVersion = expectedVersion + 1;
-  const result = await env.GAME_DB.prepare("UPDATE forge_game_states SET gold = ?, current_weapon_json = ?, shop_weapons_json = ?, skills_json = ?, version = ?, updated_at = CURRENT_TIMESTAMP WHERE account_user_id = ? AND version = ?")
+  const db = env.GAME_DB.withSession("first-primary");
+  const result = await db.prepare("UPDATE forge_game_states SET gold = ?, current_weapon_json = ?, shop_weapons_json = ?, skills_json = ?, version = ?, updated_at = CURRENT_TIMESTAMP WHERE account_user_id = ? AND version = ?")
     .bind(state.gold, JSON.stringify(state.currentWeapon), JSON.stringify(shopWeapons), JSON.stringify(state.skills), nextVersion, accountUserId, expectedVersion).run();
   if (result.meta.changes !== 1) throw new ForgeSessionConflictError();
   return { state, shopWeapons, version: nextVersion };
@@ -79,11 +82,12 @@ export const commitForgeSessionAction = async (env: ForgeSessionEnv, accountUser
   if (!Number.isInteger(expectedVersion) || expectedVersion <= 0) throw new Error("Invalid forge session version");
   if (!action || !actionId || !resultJson) throw new Error("Invalid forge action log");
   const nextVersion = expectedVersion + 1;
-  const updateStatement = env.GAME_DB.prepare("UPDATE forge_game_states SET gold = ?, current_weapon_json = ?, shop_weapons_json = ?, skills_json = ?, version = ?, updated_at = CURRENT_TIMESTAMP WHERE account_user_id = ? AND version = ?")
+  const db = env.GAME_DB.withSession("first-primary");
+  const updateStatement = db.prepare("UPDATE forge_game_states SET gold = ?, current_weapon_json = ?, shop_weapons_json = ?, skills_json = ?, version = ?, updated_at = CURRENT_TIMESTAMP WHERE account_user_id = ? AND version = ?")
     .bind(state.gold, JSON.stringify(state.currentWeapon), JSON.stringify(shopWeapons), JSON.stringify(state.skills), nextVersion, accountUserId, expectedVersion);
-  const logStatement = env.GAME_DB.prepare("INSERT INTO forge_action_logs (account_user_id, action, action_id, result_json) VALUES (?, ?, ?, ?)")
+  const logStatement = db.prepare("INSERT INTO forge_action_logs (account_user_id, action, action_id, result_json) VALUES (?, ?, ?, ?)")
     .bind(accountUserId, action, actionId, resultJson);
-  const results = await env.GAME_DB.batch([updateStatement, logStatement]);
+  const results = await db.batch([updateStatement, logStatement]);
   if (results[0].meta.changes !== 1) throw new ForgeSessionConflictError();
   if (results[1].meta.changes !== 1) throw new Error("Forge action log failed");
   return { state, shopWeapons, version: nextVersion };
