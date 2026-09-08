@@ -75,13 +75,15 @@ const getPreviousAction = async (gameDb: D1Database, accountUserId: number, acti
   const parsed = JSON.parse(previous.result_json);
   return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Record<string, unknown> : null;
 };
-export const getForgeSession = async (user: AuthUser | null, gameDb: D1Database): Promise<Response> => {
+export const getForgeSession = async (user: AuthUser | null, gameDb?: D1Database): Promise<Response> => {
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!gameDb) return Response.json({ error: "Forge service unavailable" }, { status: 503 });
   try { return Response.json(responseState(await loadOrCreate(user.id, gameDb)), { headers: { "Cache-Control": "no-store" } }); }
   catch { return Response.json({ error: "Forge service unavailable" }, { status: 503 }); }
 };
-export const handleForgeAction = async (request: Request, user: AuthUser | null, body: Record<string, unknown> | null, gameDb: D1Database): Promise<Response> => {
+export const handleForgeAction = async (request: Request, user: AuthUser | null, body: Record<string, unknown> | null, gameDb?: D1Database): Promise<Response> => {
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!gameDb) return Response.json({ error: "Forge service unavailable" }, { status: 503 });
   if (!sameOrigin(request)) return Response.json({ error: "Invalid origin" }, { status: 403 });
   const action = parseAction(body);
   if (!action) return Response.json({ error: "Invalid action" }, { status: 400 });
