@@ -1,5 +1,5 @@
 import { getSellPrice, getWeaponDamage, resolveUpgrade, type ForgeGameState, type ForgeSkills, type ForgeWeapon } from "./forge";
-import { createForgeSession, loadForgeSession, updateForgeSession, type ForgeShopWeapon, type ForgeSessionRecord } from "./forge-session";
+import { commitForgeSessionAction, createForgeSession, loadForgeSession, type ForgeShopWeapon, type ForgeSessionRecord } from "./forge-session";
 import { type AuthUser } from "./auth";
 
 const SKILL_COSTS = { enhancementBonusLevel: 25, greatSuccessLevel: 50, sellBonusLevel: 30 } as const;
@@ -69,6 +69,12 @@ const applySkill = (state: ForgeGameState, skill: keyof ForgeSkills | undefined)
   const skills = { ...state.skills, [skill]: level + 1 };
   return { state: { ...state, gold: state.gold - cost, skills }, result: { kind: "buy_skill", skill, level: level + 1, cost } };
 };
+const getPreviousAction = async (gameDb: D1Database, accountUserId: number, actionId: string): Promise<Record<string, unknown> | null> => {
+  const previous = await gameDb.prepare("SELECT result_json FROM forge_action_logs WHERE account_user_id = ? AND action_id = ? LIMIT 1").bind(accountUserId, actionId).first<{ result_json: string }>();
+  if (!previous) return null;
+  const parsed = JSON.parse(previous.result_json);
+  return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Record<string, unknown> : null;
+};
 export const getForgeSession = async (user: AuthUser | null, gameDb: D1Database): Promise<Response> => {
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
   try { return Response.json(responseState(await loadOrCreate(user.id, gameDb)), { headers: { "Cache-Control": "no-store" } }); }
@@ -80,9 +86,8 @@ export const handleForgeAction = async (request: Request, user: AuthUser | null,
   const action = parseAction(body);
   if (!action) return Response.json({ error: "Invalid action" }, { status: 400 });
   try {
-    const env = { GAME_DB: gameDb };
-    const previous = await gameDb.prepare("SELECT result_json FROM forge_action_logs WHERE account_user_id = ? AND action_id = ? LIMIT 1").bind(user.id, action.actionId).first<{ result_json: string }>();
-    if (previous) return Response.json(JSON.parse(previous.result_json), { headers: { "Cache-Control": "no-store" } });
+    const previous = await getPreviousAction(gameDb, user.id, action.actionId);
+    if (previous) return Response.json(previous, { headers: { "Cache-Control": "no-store" } });
     const session = await loadOrCreate(user.id, gameDb);
     if (session.version !== action.version) return Response.json({ error: "Session changed", version: session.version }, { status: 409 });
     let nextState = session.state;
@@ -102,10 +107,16 @@ export const handleForgeAction = async (request: Request, user: AuthUser | null,
       nextShop = createShop();
       result = { kind: "refresh_shop" };
     } else ({ state: nextState, result } = applySkill(nextState, action.skill));
-    const updated = await updateForgeSession(env, user.id, nextState, nextShop, action.version);
-    const payload = responseState(updated, result);
-    await gameDb.prepare("INSERT INTO forge_action_logs (account_user_id, action, action_id, result_json) VALUES (?, ?, ?, ?)").bind(user.id, action.action, action.actionId, JSON.stringify(payload)).run();
-    return Response.json(payload, { headers: { "Cache-Control": "no-store" } });
+    const pending = { state: nextState, shopWeapons: nextShop, version: action.version + 1 };
+    const payload = responseState(pending, result);
+    try {
+      const committed = await commitForgeSessionAction({ GAME_DB: gameDb }, user.id, nextState, nextShop, action.version, action.action, action.actionId, JSON.stringify(payload));
+      return Response.json(responseState(committed, result), { headers: { "Cache-Control": "no-store" } });
+    } catch (commitError) {
+      const previous = await getPreviousAction(gameDb, user.id, action.actionId);
+      if (previous) return Response.json(previous, { headers: { "Cache-Control": "no-store" } });
+      throw commitError;
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : "Forge action failed";
     const status = /Session changed|concurrently/i.test(message) ? 409 : /Insufficient|unavailable|not available|No weapon|already maxed|required/i.test(message) ? 400 : 500;
