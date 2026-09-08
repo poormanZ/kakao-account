@@ -9,6 +9,7 @@ const WEAPON_NAMES = ["일반검", "철검", "강철검", "대장간검"] as con
 const ACTIONS = ["BUY_WEAPON", "UPGRADE", "SELL_WEAPON", "REFRESH_SHOP", "BUY_SKILL"] as const;
 type ForgeAction = typeof ACTIONS[number];
 type ForgeActionBody = { action: ForgeAction; actionId: string; version: number; weaponId?: string; skill?: keyof ForgeSkills };
+const D1_BOOKMARK_HEADER = "X-D1-Bookmark";
 
 const isForgeAction = (value: unknown): value is ForgeAction => typeof value === "string" && (ACTIONS as readonly string[]).includes(value);
 const parseAction = (body: Record<string, unknown> | null): ForgeActionBody | null => {
@@ -45,17 +46,30 @@ const sameOrigin = (request: Request): boolean => {
   return !origin || origin === new URL(request.url).origin;
 };
 const isRecoverableSessionError = (error: unknown): boolean => error instanceof Error && error.message.startsWith("Stored forge ");
-const loadOrCreate = async (accountUserId: number, gameDb: D1Database): Promise<ForgeSessionRecord> => {
-  const env = { GAME_DB: gameDb };
+const setBookmark = (response: Response, db: D1DatabaseSession): Response => {
+  const bookmark = db.getBookmark();
+  if (bookmark) response.headers.set(D1_BOOKMARK_HEADER, bookmark);
+  return response;
+};
+const createForgeDbSession = (gameDb: D1Database, request: Request): D1DatabaseSession => {
+  const bookmark = request.headers.get(D1_BOOKMARK_HEADER)?.trim();
+  return gameDb.withSession(bookmark || "first-primary");
+};
+const loadOrCreate = async (db: D1DatabaseSession, accountUserId: number): Promise<ForgeSessionRecord> => {
   try {
-    const existing = await loadForgeSession(env, accountUserId);
+    const existing = await loadForgeSession(db, accountUserId);
     if (existing) return existing;
   } catch (error) {
     if (!isRecoverableSessionError(error)) throw error;
-    await gameDb.prepare("DELETE FROM forge_game_states WHERE account_user_id = ?").bind(accountUserId).run();
+    await db.prepare("DELETE FROM forge_game_states WHERE account_user_id = ?").bind(accountUserId).run();
   }
-  try { return await createForgeSession(env, accountUserId, createShop()); }
-  catch { const retry = await loadForgeSession(env, accountUserId); if (!retry) throw new Error("Failed to initialize forge session"); return retry; }
+  try {
+    return await createForgeSession(db, accountUserId, createShop());
+  } catch {
+    const retry = await loadForgeSession(db, accountUserId);
+    if (!retry) throw new Error("Failed to initialize forge session");
+    return retry;
+  }
 };
 const findShopWeapon = (shop: ForgeShopWeapon[], weaponId: string | undefined): ForgeShopWeapon | null => shop.find((weapon) => weapon.id === weaponId) ?? null;
 const buyWeapon = (state: ForgeGameState, shop: ForgeShopWeapon[], weaponId: string | undefined): { state: ForgeGameState; shop: ForgeShopWeapon[]; result: Record<string, unknown> } => {
@@ -75,17 +89,21 @@ const applySkill = (state: ForgeGameState, skill: keyof ForgeSkills | undefined)
   const skills = { ...state.skills, [skill]: level + 1 };
   return { state: { ...state, gold: state.gold - cost, skills }, result: { kind: "buy_skill", skill, level: level + 1, cost } };
 };
-const getPreviousAction = async (gameDb: D1Database, accountUserId: number, actionId: string): Promise<Record<string, unknown> | null> => {
-  const previous = await gameDb.prepare("SELECT result_json FROM forge_action_logs WHERE account_user_id = ? AND action_id = ? LIMIT 1").bind(accountUserId, actionId).first<{ result_json: string }>();
+const getPreviousAction = async (db: D1DatabaseSession, accountUserId: number, actionId: string): Promise<Record<string, unknown> | null> => {
+  const previous = await db.prepare("SELECT result_json FROM forge_action_logs WHERE account_user_id = ? AND action_id = ? LIMIT 1").bind(accountUserId, actionId).first<{ result_json: string }>();
   if (!previous) return null;
   const parsed = JSON.parse(previous.result_json);
   return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Record<string, unknown> : null;
 };
-export const getForgeSession = async (user: AuthUser | null, gameDb?: D1Database): Promise<Response> => {
+export const getForgeSession = async (user: AuthUser | null, gameDb?: D1Database, request?: Request): Promise<Response> => {
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
-  if (!gameDb) return Response.json({ error: "Forge service unavailable" }, { status: 503 });
-  try { return Response.json(responseState(await loadOrCreate(user.id, gameDb)), { headers: { "Cache-Control": "no-store" } }); }
-  catch { return Response.json({ error: "Forge service unavailable" }, { status: 503 }); }
+  if (!gameDb || !request) return Response.json({ error: "Forge service unavailable" }, { status: 503 });
+  const db = createForgeDbSession(gameDb, request);
+  try {
+    return setBookmark(Response.json(responseState(await loadOrCreate(db, user.id)), { headers: { "Cache-Control": "no-store" } }), db);
+  } catch {
+    return setBookmark(Response.json({ error: "Forge service unavailable" }, { status: 503 }), db);
+  }
 };
 export const handleForgeAction = async (request: Request, user: AuthUser | null, body: Record<string, unknown> | null, gameDb?: D1Database): Promise<Response> => {
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -93,11 +111,12 @@ export const handleForgeAction = async (request: Request, user: AuthUser | null,
   if (!sameOrigin(request)) return Response.json({ error: "Invalid origin" }, { status: 403 });
   const action = parseAction(body);
   if (!action) return Response.json({ error: "Invalid action" }, { status: 400 });
+  const db = createForgeDbSession(gameDb, request);
   try {
-    const previous = await getPreviousAction(gameDb, user.id, action.actionId);
-    if (previous) return Response.json(previous, { headers: { "Cache-Control": "no-store" } });
-    const session = await loadOrCreate(user.id, gameDb);
-    if (session.version !== action.version) return Response.json({ error: "Session changed", version: session.version }, { status: 409 });
+    const previous = await getPreviousAction(db, user.id, action.actionId);
+    if (previous) return setBookmark(Response.json(previous, { headers: { "Cache-Control": "no-store" } }), db);
+    const session = await loadOrCreate(db, user.id);
+    if (session.version !== action.version) return setBookmark(Response.json({ error: "Session changed", version: session.version }, { status: 409 }), db);
     let nextState = session.state;
     let nextShop = session.shopWeapons;
     let result: Record<string, unknown>;
@@ -118,16 +137,16 @@ export const handleForgeAction = async (request: Request, user: AuthUser | null,
     const pending = { state: nextState, shopWeapons: nextShop, version: action.version + 1 };
     const payload = responseState(pending, result);
     try {
-      const committed = await commitForgeSessionAction({ GAME_DB: gameDb }, user.id, nextState, nextShop, action.version, action.action, action.actionId, JSON.stringify(payload));
-      return Response.json(responseState(committed, result), { headers: { "Cache-Control": "no-store" } });
+      const committed = await commitForgeSessionAction(db, user.id, nextState, nextShop, action.version, action.action, action.actionId, JSON.stringify(payload));
+      return setBookmark(Response.json(responseState(committed, result), { headers: { "Cache-Control": "no-store" } }), db);
     } catch (commitError) {
-      const previous = await getPreviousAction(gameDb, user.id, action.actionId);
-      if (previous) return Response.json(previous, { headers: { "Cache-Control": "no-store" } });
+      const previous = await getPreviousAction(db, user.id, action.actionId);
+      if (previous) return setBookmark(Response.json(previous, { headers: { "Cache-Control": "no-store" } }), db);
       throw commitError;
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : "Forge action failed";
     const status = /Session changed|concurrently/i.test(message) ? 409 : /Insufficient|unavailable|not available|No weapon|already maxed|required/i.test(message) ? 400 : 500;
-    return Response.json({ error: status === 500 ? "Forge action failed" : message }, { status });
+    return setBookmark(Response.json({ error: status === 500 ? "Forge action failed" : message }, { status }), db);
   }
 };
