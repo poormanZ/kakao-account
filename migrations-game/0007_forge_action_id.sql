@@ -1,5 +1,4 @@
--- Client action ids make retries idempotent and prevent accidental duplicate mutations.
-ALTER TABLE forge_action_logs ADD COLUMN action_id TEXT;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_forge_action_logs_user_action
-  ON forge_action_logs(account_user_id, action_id)
-  WHERE action_id IS NOT NULL;
+-- Compatibility migration: action_id and its unique index are already part of 0006_forge_upgrade.sql.
+-- Keep this migration as a no-op so environments that already recorded 0006 can advance
+-- through the migration history without attempting to add the column twice.
+SELECT 1;
