@@ -81,8 +81,8 @@ export const commitForgeSessionAction = async (env: ForgeSessionEnv, accountUser
   const nextVersion = expectedVersion + 1;
   const updateStatement = env.GAME_DB.prepare("UPDATE forge_game_states SET gold = ?, current_weapon_json = ?, shop_weapons_json = ?, skills_json = ?, version = ?, updated_at = CURRENT_TIMESTAMP WHERE account_user_id = ? AND version = ?")
     .bind(state.gold, JSON.stringify(state.currentWeapon), JSON.stringify(shopWeapons), JSON.stringify(state.skills), nextVersion, accountUserId, expectedVersion);
-  const logStatement = env.GAME_DB.prepare("INSERT INTO forge_action_logs (account_user_id, action, action_id, result_json) SELECT ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM forge_game_states WHERE account_user_id = ? AND version = ?)")
-    .bind(accountUserId, action, actionId, resultJson, accountUserId, nextVersion);
+  const logStatement = env.GAME_DB.prepare("INSERT INTO forge_action_logs (account_user_id, action, action_id, result_json) VALUES (?, ?, ?, ?)")
+    .bind(accountUserId, action, actionId, resultJson);
   const results = await env.GAME_DB.batch([updateStatement, logStatement]);
   if (results[0].meta.changes !== 1) throw new ForgeSessionConflictError();
   if (results[1].meta.changes !== 1) throw new Error("Forge action log failed");
