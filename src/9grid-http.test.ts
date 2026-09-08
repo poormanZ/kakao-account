@@ -255,7 +255,7 @@ describe("9Grid HTTP session", () => {
       0,
       "action",
     );
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(401);
     expect(db.getState()).toBeNull();
   });
 });
