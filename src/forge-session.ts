@@ -15,6 +15,12 @@ const isWeapon = (value: unknown): value is ForgeWeapon => {
     && isNonNegativeInteger(value.baseDamage) && value.baseDamage > 0 && value.rarity === "common"
     && isNonNegativeInteger(value.enhancementLevel);
 };
+const isShopWeapon = (value: unknown): value is ForgeShopWeapon => {
+  if (!isRecord(value)) return false;
+  return typeof value.id === "string" && value.id.length > 0 && value.id.length <= 100
+    && typeof value.name === "string" && value.name.length > 0 && value.name.length <= 100
+    && isNonNegativeInteger(value.baseDamage) && value.baseDamage > 0 && value.rarity === "common";
+};
 const isForgeSkills = (value: unknown): value is ForgeSkills => {
   if (!isRecord(value)) return false;
   return isNonNegativeInteger(value.enhancementBonusLevel)
@@ -35,8 +41,8 @@ const parseState = (value: string): ForgeGameState => {
 };
 const parseShopWeapons = (value: string): ForgeShopWeapon[] => {
   const parsed = parseJson(value);
-  if (!Array.isArray(parsed) || parsed.length !== 3 || !parsed.every(isWeapon)) throw new Error("Stored forge shop is invalid");
-  return parsed.map(({ id, name, baseDamage, rarity }) => ({ id, name, baseDamage, rarity }));
+  if (!Array.isArray(parsed) || parsed.length !== 3 || !parsed.every(isShopWeapon)) throw new Error("Stored forge shop is invalid");
+  return parsed;
 };
 export const loadForgeSession = async (env: ForgeSessionEnv, accountUserId: number): Promise<ForgeSessionRecord | null> => {
   const row = await env.GAME_DB.prepare("SELECT gold, current_weapon_json, shop_weapons_json, skills_json, version FROM forge_game_states WHERE account_user_id = ? LIMIT 1")
@@ -51,7 +57,7 @@ export const loadForgeSession = async (env: ForgeSessionEnv, accountUserId: numb
 };
 export const createForgeSession = async (env: ForgeSessionEnv, accountUserId: number, shopWeapons: ForgeShopWeapon[]): Promise<ForgeSessionRecord> => {
   if (!Number.isInteger(accountUserId) || accountUserId <= 0) throw new Error("Invalid account user id");
-  if (shopWeapons.length !== 3 || !shopWeapons.every(isWeapon)) throw new Error("Invalid forge shop");
+  if (shopWeapons.length !== 3 || !shopWeapons.every(isShopWeapon)) throw new Error("Invalid forge shop");
   const state = createInitialForgeState();
   await env.GAME_DB.prepare("INSERT INTO forge_game_states (account_user_id, gold, current_weapon_json, shop_weapons_json, skills_json, version, updated_at) VALUES (?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP)")
     .bind(accountUserId, state.gold, JSON.stringify(state.currentWeapon), JSON.stringify(shopWeapons), JSON.stringify(state.skills)).run();
@@ -59,7 +65,7 @@ export const createForgeSession = async (env: ForgeSessionEnv, accountUserId: nu
 };
 export const updateForgeSession = async (env: ForgeSessionEnv, accountUserId: number, state: ForgeGameState, shopWeapons: ForgeShopWeapon[], expectedVersion: number): Promise<ForgeSessionRecord> => {
   if (!Number.isInteger(accountUserId) || accountUserId <= 0) throw new Error("Invalid account user id");
-  if (!isForgeState(state) || shopWeapons.length !== 3 || !shopWeapons.every(isWeapon)) throw new Error("Invalid forge session");
+  if (!isForgeState(state) || shopWeapons.length !== 3 || !shopWeapons.every(isShopWeapon)) throw new Error("Invalid forge session");
   if (!Number.isInteger(expectedVersion) || expectedVersion <= 0) throw new Error("Invalid forge session version");
   const nextVersion = expectedVersion + 1;
   const result = await env.GAME_DB.prepare("UPDATE forge_game_states SET gold = ?, current_weapon_json = ?, shop_weapons_json = ?, skills_json = ?, version = ?, updated_at = CURRENT_TIMESTAMP WHERE account_user_id = ? AND version = ?")
@@ -69,7 +75,7 @@ export const updateForgeSession = async (env: ForgeSessionEnv, accountUserId: nu
 };
 export const commitForgeSessionAction = async (env: ForgeSessionEnv, accountUserId: number, state: ForgeGameState, shopWeapons: ForgeShopWeapon[], expectedVersion: number, action: string, actionId: string, resultJson: string): Promise<ForgeSessionRecord> => {
   if (!Number.isInteger(accountUserId) || accountUserId <= 0) throw new Error("Invalid account user id");
-  if (!isForgeState(state) || shopWeapons.length !== 3 || !shopWeapons.every(isWeapon)) throw new Error("Invalid forge session");
+  if (!isForgeState(state) || shopWeapons.length !== 3 || !shopWeapons.every(isShopWeapon)) throw new Error("Invalid forge session");
   if (!Number.isInteger(expectedVersion) || expectedVersion <= 0) throw new Error("Invalid forge session version");
   if (!action || !actionId || !resultJson) throw new Error("Invalid forge action log");
   const nextVersion = expectedVersion + 1;
