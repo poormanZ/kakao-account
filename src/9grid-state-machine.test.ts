@@ -117,6 +117,47 @@ describe("9Grid turn state machine", () => {
     expect(() => rerollTurnCandidates(state, rerollGenerator)).toThrow("limit");
   });
 
+  it("clears the first round around the intended mid-run pacing with an all-Warrior build", () => {
+    const warrior = createCard("warrior", "goblin", "warrior");
+    const warriorGenerator = (count: number) => Array.from({ length: count }, () => warrior);
+    let state = createInitialState(80, 100);
+
+    for (let turn = 1; turn <= 9 && !state.gameOver; turn += 1) {
+      state = rerollTurnCandidates(startTurn(state, { generateCards: warriorGenerator }), warriorGenerator);
+      state = chooseTurnCard(state, "warrior");
+      state = placeTurnCard(state, turn - 1);
+      state = resolveTurnCombat(state, { monsterAttack: 0 });
+    }
+
+    expect(state.maxClearedRound).toBe(1);
+    expect(state.round.round).toBe(2);
+    expect(state.round.turn).toBe(1);
+    expect(state.lastRoundClearTurn).toBe(6);
+  });
+
+  it("keeps a deliberately mixed no-synergy build alive through all 9 turns", () => {
+    const mixedCards = [
+      createCard("warrior", "goblin", "warrior"),
+      createCard("tank", "elf", "tank"),
+      createCard("healer", "dwarf", "healer"),
+    ];
+    const mixedGenerator = (count: number) => mixedCards.slice(0, count);
+    const picks = ["warrior", "tank", "healer", "tank", "healer", "warrior", "healer", "warrior", "tank"];
+    let state = createInitialState(80, 100);
+
+    for (let turn = 1; turn <= 9; turn += 1) {
+      state = rerollTurnCandidates(startTurn(state, { generateCards: mixedGenerator }), mixedGenerator);
+      state = chooseTurnCard(state, picks[turn - 1]);
+      state = placeTurnCard(state, turn - 1);
+      state = resolveTurnCombat(state, { monsterAttack: 0 });
+    }
+
+    expect(state.gameOver).toBe(true);
+    expect(state.maxClearedRound).toBe(0);
+    expect(state.round.round).toBe(1);
+    expect(state.round.monsterHp).toBeGreaterThan(0);
+  });
+
   it("clears the round immediately when the monster dies", () => {
     let state = beginTurn(createInitialState(100, 1));
     state = chooseTurnCard(state, "a");
