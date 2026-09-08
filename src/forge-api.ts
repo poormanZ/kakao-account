@@ -51,7 +51,15 @@ const getCookie = (request: Request, name: string): string | null => {
   if (!cookieHeader) return null;
   for (const part of cookieHeader.split(";")) {
     const [key, ...valueParts] = part.trim().split("=");
-    if (key === name) return valueParts.join("=") || null;
+    if (key === name) {
+      const value = valueParts.join("=");
+      if (!value) return null;
+      try {
+        return decodeURIComponent(value);
+      } catch {
+        return null;
+      }
+    }
   }
   return null;
 };
