@@ -30,7 +30,7 @@ const isCard = (value: unknown): value is Card => {
     && typeof value.job === "string" && JOBS.includes(value.job as Job);
 };
 
-const isGameState = (value: unknown): value is GameState => {
+export const isGameState = (value: unknown): value is GameState => {
   if (!isRecord(value) || !Array.isArray(value.board)) return false;
   if (value.board.length !== 9 || !value.board.every((card) => card === null || isCard(card))) return false;
   if (!isRecord(value.playerStats) || !isRecord(value.round)) return false;
@@ -54,18 +54,13 @@ const isGameState = (value: unknown): value is GameState => {
 
 const parseState = (stateJson: string): GameState => {
   let parsed: unknown;
-  try {
-    parsed = JSON.parse(stateJson);
-  } catch {
-    throw new Error("Stored 9Grid state is invalid");
-  }
+  try { parsed = JSON.parse(stateJson); } catch { throw new Error("Stored 9Grid state is invalid"); }
   if (!isGameState(parsed)) throw new Error("Stored 9Grid state is invalid");
   return parsed;
 };
 
 const isActionId = (value: unknown): value is string =>
   typeof value === "string" && value.length >= 16 && value.length <= 100;
-
 const isResponseJson = (value: unknown): value is string =>
   typeof value === "string" && value.length > 0 && value.length <= 200_000;
 
@@ -80,21 +75,11 @@ export const load9GridSessionRecord = async (
   if (!row) return null;
   if (!isPositiveInteger(row.version)) throw new Error("Stored 9Grid session version is invalid");
   if (row.last_action_id !== null && !isActionId(row.last_action_id)) throw new Error("Stored 9Grid action id is invalid");
-  if (row.last_action_response_json !== null && !isResponseJson(row.last_action_response_json)) {
-    throw new Error("Stored 9Grid action response is invalid");
-  }
-  return {
-    state: parseState(row.state_json),
-    version: row.version,
-    lastActionId: row.last_action_id,
-    lastActionResponseJson: row.last_action_response_json,
-  };
+  if (row.last_action_response_json !== null && !isResponseJson(row.last_action_response_json)) throw new Error("Stored 9Grid action response is invalid");
+  return { state: parseState(row.state_json), version: row.version, lastActionId: row.last_action_id, lastActionResponseJson: row.last_action_response_json };
 };
 
-export const load9GridSession = async (
-  env: NineGridSessionEnv,
-  userId: number,
-): Promise<GameState | null> => {
+export const load9GridSession = async (env: NineGridSessionEnv, userId: number): Promise<GameState | null> => {
   const record = await load9GridSessionRecord(env, userId);
   return record?.state ?? null;
 };
@@ -109,10 +94,8 @@ export const create9GridSession = async (
   if (!isGameState(state)) throw new Error("Cannot persist invalid 9Grid state");
   if (lastActionId !== null && !isActionId(lastActionId)) throw new Error("Invalid 9Grid action id");
   if (lastActionResponseJson !== null && !isResponseJson(lastActionResponseJson)) throw new Error("Invalid 9Grid action response");
-  await env.DB
-    .prepare('INSERT INTO "9grid_sessions" (user_id, state_json, updated_at, version, last_action_id, last_action_response_json) VALUES (?, ?, CURRENT_TIMESTAMP, 1, ?, ?)')
-    .bind(userId, JSON.stringify(state), lastActionId, lastActionResponseJson)
-    .run();
+  await env.DB.prepare('INSERT INTO "9grid_sessions" (user_id, state_json, updated_at, version, last_action_id, last_action_response_json) VALUES (?, ?, CURRENT_TIMESTAMP, 1, ?, ?)')
+    .bind(userId, JSON.stringify(state), lastActionId, lastActionResponseJson).run();
   return { state, version: 1, lastActionId, lastActionResponseJson };
 };
 
@@ -128,20 +111,13 @@ export const update9GridSession = async (
   if (!isPositiveInteger(expectedVersion)) throw new Error("Invalid 9Grid session version");
   if (lastActionId !== null && !isActionId(lastActionId)) throw new Error("Invalid 9Grid action id");
   if (lastActionResponseJson !== null && !isResponseJson(lastActionResponseJson)) throw new Error("Invalid 9Grid action response");
-
   const nextVersion = expectedVersion + 1;
-  const result = await env.DB
-    .prepare('UPDATE "9grid_sessions" SET state_json = ?, updated_at = CURRENT_TIMESTAMP, version = ?, last_action_id = ?, last_action_response_json = ? WHERE user_id = ? AND version = ?')
-    .bind(JSON.stringify(state), nextVersion, lastActionId, lastActionResponseJson, userId, expectedVersion)
-    .run();
-
+  const result = await env.DB.prepare('UPDATE "9grid_sessions" SET state_json = ?, updated_at = CURRENT_TIMESTAMP, version = ?, last_action_id = ?, last_action_response_json = ? WHERE user_id = ? AND version = ?')
+    .bind(JSON.stringify(state), nextVersion, lastActionId, lastActionResponseJson, userId, expectedVersion).run();
   if (result.meta.changes !== 1) throw new NineGridSessionConflictError();
   return { state, version: nextVersion, lastActionId, lastActionResponseJson };
 };
 
-export const delete9GridSession = async (
-  env: NineGridSessionEnv,
-  userId: number,
-): Promise<void> => {
+export const delete9GridSession = async (env: NineGridSessionEnv, userId: number): Promise<void> => {
   await env.DB.prepare('DELETE FROM "9grid_sessions" WHERE user_id = ?').bind(userId).run();
 };
