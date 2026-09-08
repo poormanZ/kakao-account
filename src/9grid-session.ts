@@ -37,11 +37,16 @@ export const isGameState = (value: unknown): value is GameState => {
   return isNonNegativeInteger(value.maxClearedRound) && isNonNegativeInteger(value.lastRoundClearTurn)
     && value.lastRoundClearTurn <= 9 && (clearAt === null || isIsoTimestamp(clearAt)) && typeof value.gameOver === "boolean";
 };
+const normalizeStoredState = (value: unknown): unknown => {
+  if (!isRecord(value) || value.lastRoundClearAt !== undefined) return value;
+  return { ...value, lastRoundClearAt: null };
+};
 const parseState = (stateJson: string): GameState => {
   let parsed: unknown;
   try { parsed = JSON.parse(stateJson); } catch { throw new Error("Stored 9Grid state is invalid"); }
-  if (!isGameState(parsed)) throw new Error("Stored 9Grid state is invalid");
-  return parsed;
+  const normalized = normalizeStoredState(parsed);
+  if (!isGameState(normalized)) throw new Error("Stored 9Grid state is invalid");
+  return normalized;
 };
 const isActionId = (value: unknown): value is string => typeof value === "string" && value.length >= 16 && value.length <= 100;
 const isResponseJson = (value: unknown): value is string => typeof value === "string" && value.length > 0 && value.length <= 200_000;
