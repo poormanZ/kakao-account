@@ -6,7 +6,10 @@ export interface AuthUser {
 
 interface SessionUserRow extends AuthUser {
   expires_at: string;
+  last_seen_at: string;
 }
+
+const SESSION_TOUCH_INTERVAL_MS = 60_000;
 
 export const getCookie = (request: Request, name: string): string | null => {
   const cookieHeader = request.headers.get("Cookie");
@@ -35,7 +38,7 @@ export const getSessionUser = async (
 ): Promise<SessionUserRow | null> => {
   const sessionHash = await hashSessionId(sessionId);
   const session = await db.prepare(
-    `SELECT u.id, u.nickname, u.profile_image_url, s.expires_at
+    `SELECT u.id, u.nickname, u.profile_image_url, s.expires_at, s.last_seen_at
      FROM sessions s JOIN users u ON u.id = s.user_id
      WHERE s.id = ? LIMIT 1`,
   ).bind(sessionHash).first<SessionUserRow>();
@@ -46,8 +49,11 @@ export const getSessionUser = async (
     return null;
   }
 
-  await db.prepare("UPDATE sessions SET last_seen_at = CURRENT_TIMESTAMP WHERE id = ?")
-    .bind(sessionHash).run();
+  const lastSeen = new Date(session.last_seen_at).getTime();
+  if (!Number.isFinite(lastSeen) || Date.now() - lastSeen >= SESSION_TOUCH_INTERVAL_MS) {
+    await db.prepare("UPDATE sessions SET last_seen_at = CURRENT_TIMESTAMP WHERE id = ?")
+      .bind(sessionHash).run();
+  }
   return session;
 };
 
