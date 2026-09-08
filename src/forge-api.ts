@@ -74,6 +74,7 @@ const createForgeDbSession = (gameDb: D1Database, request: Request): D1DatabaseS
   const bookmark = headerBookmark || getCookie(request, D1_BOOKMARK_COOKIE);
   return gameDb.withSession(bookmark || "first-primary");
 };
+const createForgeActionDbSession = (gameDb: D1Database): D1DatabaseSession => gameDb.withSession("first-primary");
 const loadOrCreate = async (db: D1DatabaseSession, accountUserId: number): Promise<ForgeSessionRecord> => {
   try {
     const existing = await loadForgeSession(db, accountUserId);
@@ -131,10 +132,8 @@ export const handleForgeAction = async (request: Request, user: AuthUser | null,
   if (!sameOrigin(request)) return Response.json({ error: "Invalid origin" }, { status: 403 });
   const action = parseAction(body);
   if (!action) return Response.json({ error: "Invalid action" }, { status: 400 });
-  const db = createForgeDbSession(gameDb, request);
+  const db = createForgeActionDbSession(gameDb);
   try {
-    const previous = await getPreviousAction(db, user.id, action.actionId);
-    if (previous) return setBookmark(Response.json(previous, { headers: { "Cache-Control": "no-store" } }), db, request);
     const session = await loadOrCreate(db, user.id);
     if (session.version !== action.version) {
       const current = await loadForgeSession(db, user.id);
