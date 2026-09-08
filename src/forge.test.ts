@@ -44,6 +44,31 @@ describe("forge game rules", () => {
     if (!weapon) throw new Error("Initial weapon missing");
     expect(resolveUpgrade(state, 0.1, 0.99)).toEqual({ kind: "success", weapon: { ...weapon, enhancementLevel: 1 }, cost: 0 });
   });
+  it("resolves +1 to +2 on a successful normal roll", () => {
+    const state = createInitialForgeState();
+    const weapon = state.currentWeapon;
+    if (!weapon) throw new Error("Initial weapon missing");
+    state.currentWeapon = { ...weapon, enhancementLevel: 1 };
+    state.gold = 10;
+    expect(getUpgradeSuccessRate(1, state.skills)).toBe(80);
+    expect(resolveUpgrade(state, 0.79, 0.99)).toEqual({
+      kind: "success",
+      weapon: { ...state.currentWeapon, enhancementLevel: 2 },
+      cost: 1,
+    });
+  });
+  it("destroys a +1 weapon only when the success roll misses 80%", () => {
+    const state = createInitialForgeState();
+    const weapon = state.currentWeapon;
+    if (!weapon) throw new Error("Initial weapon missing");
+    state.currentWeapon = { ...weapon, enhancementLevel: 1 };
+    state.gold = 10;
+    expect(resolveUpgrade(state, 0.8, 0.99)).toEqual({
+      kind: "failed",
+      weapon: null,
+      cost: 1,
+    });
+  });
   it("resolves a great success as two levels", () => {
     const state = createInitialForgeState();
     state.skills.greatSuccessLevel = 1;
