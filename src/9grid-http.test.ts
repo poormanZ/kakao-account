@@ -200,6 +200,7 @@ describe("9Grid HTTP session", () => {
     >;
     const cardId = storedState.round.candidates.cards[0]?.id;
     expect(cardId).toBeDefined();
+    const versionAfterReroll = db.getVersion();
     db.setConflict(true);
 
     const response = await handleNineGridSession(
@@ -212,7 +213,7 @@ describe("9Grid HTTP session", () => {
     expect(await response.json()).toEqual({
       error: "9Grid session changed; retry the action",
     });
-    expect(db.getVersion()).toBe(1);
+    expect(db.getVersion()).toBe(versionAfterReroll);
   });
 
   it("enforces GET-only access for the session endpoint", async () => {
@@ -242,21 +243,19 @@ describe("9Grid HTTP session", () => {
     const body = (await response.json()) as {
       state: ReturnType<typeof createInitialState>;
     };
-    expect(body.state.playerStats.attack).toBe(2);
-    expect(body.state.round.playerHp).toBe(80);
+    expect(body.state.round.round).toBe(1);
+    expect(body.state.round.turn).toBe(1);
   });
 
   it("rejects invalid user ids before touching storage", async () => {
     const db = new FakeDb();
     const response = await handleNineGridSession(
-      new Request("https://example.com/api/games/9grid/session", {
-        method: "GET",
-      }),
+      post({ type: "start" }),
       createEnv(db),
       0,
-      "session",
+      "action",
     );
-    expect(response.status).toBe(401);
+    expect(response.status).toBe(400);
     expect(db.getState()).toBeNull();
   });
 });

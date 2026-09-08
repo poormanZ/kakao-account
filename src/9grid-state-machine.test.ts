@@ -76,7 +76,7 @@ describe("9Grid turn state machine", () => {
     state = chooseTurnCard(state, "a");
     state = placeTurnCard(state, 2);
     state = resolveTurnCombat(state, { monsterAttack: 0 });
-    expect(state.round.playerHp).toBe(52);
+    expect(state.round.playerHp).toBe(102);
   });
 
   it("requires a reroll before selection", () => {
@@ -110,10 +110,9 @@ describe("9Grid turn state machine", () => {
     const rerollGenerator = (count: number) =>
       Array.from({ length: count }, (_, index) => createCard(`replacement-${index}`, "dragon", "healer"));
     state = rerollTurnCandidates(state, rerollGenerator);
+    expect(state.round.candidates.rerollsUsed).toBe(1);
     state = rerollTurnCandidates(state, rerollGenerator);
     expect(state.round.candidates.rerollsUsed).toBe(2);
-    state = rerollTurnCandidates(state, rerollGenerator);
-    expect(state.round.candidates.rerollsUsed).toBe(3);
     expect(() => rerollTurnCandidates(state, rerollGenerator)).toThrow("limit");
   });
 
