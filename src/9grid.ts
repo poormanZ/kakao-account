@@ -44,14 +44,9 @@ export const replaceCard = (board: Board, index: number, card: Card): Board => {
 };
 export const rerollCandidates = (candidates: Card[], rerollIndexes: number[], nextCards: Card[], rerollsUsed: number, rerollLimit = DEFAULT_REROLLS_PER_TURN): CandidateState => {
   if (rerollsUsed >= rerollLimit) throw new Error("Reroll limit reached");
-  if (rerollIndexes.length === 0) throw new Error("Select at least one card to reroll");
-  if (nextCards.length !== rerollIndexes.length) throw new Error("Replacement card count mismatch");
-  const result = [...candidates];
-  rerollIndexes.forEach((index, replacementIndex) => {
-    if (!Number.isInteger(index) || index < 0 || index >= result.length) throw new Error("Invalid candidate index");
-    result[index] = nextCards[replacementIndex];
-  });
-  return { cards: result, rerollsUsed: rerollsUsed + 1, selectedCardId: null };
+  if (rerollIndexes.length !== candidates.length) throw new Error("All candidate cards must be rerolled");
+  if (nextCards.length !== candidates.length) throw new Error("Replacement card count mismatch");
+  return { cards: [...nextCards], rerollsUsed: rerollsUsed + 1, selectedCardId: null };
 };
 export const selectCandidate = (state: CandidateState, cardId: string): CandidateState => {
   if (!state.cards.some((card) => card.id === cardId)) throw new Error("Card is not a candidate");
