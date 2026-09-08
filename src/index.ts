@@ -3,6 +3,7 @@ import { render9GridScorePage } from "./9grid-score-ui";
 import { handleNineGridSession } from "./9grid-http";
 import { get9GridBestScore, get9GridMyRank, get9GridRanking, save9GridScore } from "./9grid-score";
 import { renderPortalPage } from "./portal-ui";
+import { getForgeSession, handleForgeAction } from "./forge-api";
 import { logError, logInfo, logWarn } from "./logger";
 
 export interface Env {
@@ -142,6 +143,17 @@ const worker = {
       if (request.method === "GET" && url.pathname === "/api/games/9grid/best") return get9GridBestScore(env, user);
       if (request.method === "GET" && url.pathname === "/api/games/9grid/my-rank") return get9GridMyRank(env, user);
       if (request.method === "GET" && url.pathname === "/api/games/9grid/ranking") { const rawLimit = Number(url.searchParams.get("limit") ?? "20"); return get9GridRanking(env, Number.isFinite(rawLimit) ? rawLimit : 20); }
+      return json({ error: "Not found" }, { status: 404 }, secure);
+    }
+
+    if (url.pathname.startsWith("/api/games/forge")) {
+      let user: UserRow | null;
+      try { user = await getAuthenticatedUser(request, env.DB, SESSION_COOKIE); }
+      catch (error) { logError("forge.user_lookup_failed", error, context); return json({ error: "Authentication service unavailable" }, { status: 503 }, secure); }
+      if (!user) return json({ error: "Unauthorized" }, { status: 401 }, secure);
+      if (!env.GAME_DB) return json({ error: "Game service unavailable" }, { status: 503 }, secure);
+      if (request.method === "GET" && url.pathname === "/api/games/forge/session") return getForgeSession(user, env.GAME_DB);
+      if (request.method === "POST" && url.pathname === "/api/games/forge/session/action") return handleForgeAction(request, user, await parseJsonBody(request), env.GAME_DB);
       return json({ error: "Not found" }, { status: 404 }, secure);
     }
 
