@@ -18,6 +18,7 @@ export type NineGridAction =
 export interface NineGridActionDependencies {
   generateCards: CardGenerator;
   monsterAttack?: number;
+  now?: () => string;
 }
 
 const RACES: readonly Race[] = ["goblin", "elf", "dwarf", "dragon"];
@@ -71,7 +72,7 @@ export const parseNineGridAction = (value: unknown): NineGridAction => {
 export const applyNineGridAction = (
   state: GameState,
   action: NineGridAction,
-  { generateCards, monsterAttack }: NineGridActionDependencies,
+  { generateCards, monsterAttack, now }: NineGridActionDependencies,
 ): GameState => {
   switch (action.type) {
     case "start":
@@ -83,7 +84,7 @@ export const applyNineGridAction = (
     case "place":
       return placeTurnCard(state, action.boardIndex);
     case "combat":
-      return resolveTurnCombat(state, { monsterAttack });
+      return resolveTurnCombat(state, { monsterAttack, now });
   }
 };
 
