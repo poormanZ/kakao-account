@@ -1,4 +1,4 @@
-import { createInitialForgeState, getSellPrice, getWeaponDamage, resolveUpgrade, type ForgeGameState, type ForgeSkills, type ForgeWeapon } from "./forge";
+import { getSellPrice, getWeaponDamage, resolveUpgrade, type ForgeGameState, type ForgeSkills, type ForgeWeapon } from "./forge";
 import { createForgeSession, loadForgeSession, updateForgeSession, type ForgeShopWeapon, type ForgeSessionRecord } from "./forge-session";
 import { type AuthUser } from "./auth";
 
