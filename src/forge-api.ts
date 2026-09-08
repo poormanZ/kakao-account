@@ -94,9 +94,12 @@ export const handleForgeAction = async (request: Request, user: AuthUser | null,
   const action = parseAction(body);
   if (!action) return Response.json({ error: "Invalid action" }, { status: 400 });
   try {
-    const previous = await getPreviousAction(gameDb, user.id, action.actionId);
+    const [previous, existingSession] = await Promise.all([
+      getPreviousAction(gameDb, user.id, action.actionId),
+      loadForgeSession({ GAME_DB: gameDb }, user.id),
+    ]);
     if (previous) return Response.json(previous, { headers: { "Cache-Control": "no-store" } });
-    const session = await loadOrCreate(user.id, gameDb);
+    const session = existingSession ?? await loadOrCreate(user.id, gameDb);
     if (session.version !== action.version) return Response.json({ error: "Session changed", version: session.version }, { status: 409 });
     let nextState = session.state;
     let nextShop = session.shopWeapons;
