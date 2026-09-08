@@ -32,6 +32,7 @@ const getMonsterAttack = (env: NineGridHttpEnv, round: number): number => {
 const applyAction = (state: GameState, action: NineGridAction, env: NineGridHttpEnv): GameState => applyNineGridAction(state, action, {
   generateCards: createDefaultCardGenerator(),
   monsterAttack: getMonsterAttack(env, state.round.round),
+  now: () => new Date().toISOString(),
 });
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
 const parseStoredResponse = (value: string): { state: GameState; monsterAttack: number } | null => {

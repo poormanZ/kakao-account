@@ -17,6 +17,7 @@ const isCard = (value: unknown): value is Card => {
     && typeof value.race === "string" && RACES.includes(value.race as Race)
     && typeof value.job === "string" && JOBS.includes(value.job as Job);
 };
+const isIsoTimestamp = (value: unknown): value is string => typeof value === "string" && !Number.isNaN(Date.parse(value));
 export const isGameState = (value: unknown): value is GameState => {
   if (!isRecord(value) || !Array.isArray(value.board)) return false;
   if (value.board.length !== 9 || !value.board.every((card) => card === null || isCard(card))) return false;
@@ -32,8 +33,9 @@ export const isGameState = (value: unknown): value is GameState => {
   if (!round.candidates.cards.every(isCard)) return false;
   if (!isFiniteNonNegativeNumber(round.candidates.rerollsUsed)) return false;
   if (round.candidates.selectedCardId !== null && typeof round.candidates.selectedCardId !== "string") return false;
+  const clearAt = value.lastRoundClearAt;
   return isNonNegativeInteger(value.maxClearedRound) && isNonNegativeInteger(value.lastRoundClearTurn)
-    && value.lastRoundClearTurn <= 9 && typeof value.gameOver === "boolean";
+    && value.lastRoundClearTurn <= 9 && (clearAt === null || isIsoTimestamp(clearAt)) && typeof value.gameOver === "boolean";
 };
 const parseState = (stateJson: string): GameState => {
   let parsed: unknown;
