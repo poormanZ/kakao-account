@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { createInitialState } from "./9grid";
-import { getJobBaseStatValue, getMonsterAttack, getMonsterMaxHp, INITIAL_PLAYER_STATS, JOB_BASE_STAT_VALUES, MONSTER_ATTACK_BY_ROUND, MONSTER_MAX_HP_BY_ROUND } from "./9grid-balance";
+import {
+  getJobBaseStatValue,
+  getMonsterAttack,
+  getMonsterMaxHp,
+  INITIAL_PLAYER_STATS,
+  JOB_BASE_STAT_VALUES,
+  MONSTER_ATTACK_BY_ROUND,
+  MONSTER_MAX_HP_BY_ROUND,
+} from "./9grid-balance";
 
 describe("9Grid balance", () => {
   it("uses the tuned player baseline", () => {
@@ -17,15 +25,15 @@ describe("9Grid balance", () => {
     expect(getJobBaseStatValue("mage")).toBe(1);
   });
 
-  it("uses the round-by-round monster curve", () => {
-    expect(MONSTER_MAX_HP_BY_ROUND).toEqual([100, 180, 300, 500, 800, 1100, 1500, 2050, 2800, 3800]);
-    expect(MONSTER_ATTACK_BY_ROUND).toEqual([10, 14, 18, 22, 26, 30, 34, 38, 42, 46]);
-    expect(getMonsterMaxHp(1)).toBe(100);
-    expect(getMonsterMaxHp(10)).toBe(3800);
-    expect(getMonsterMaxHp(11)).toBe(5130);
-    expect(getMonsterAttack(1)).toBe(10);
-    expect(getMonsterAttack(10)).toBe(46);
-    expect(getMonsterAttack(11)).toBe(50);
+  it("uses the tuned round-by-round monster curve", () => {
+    expect(MONSTER_MAX_HP_BY_ROUND).toEqual([90, 160, 250, 380, 560, 800, 1100, 1500, 2000, 2600]);
+    expect(MONSTER_ATTACK_BY_ROUND).toEqual([8, 10, 12, 14, 17, 20, 24, 28, 32, 36]);
+    expect(getMonsterMaxHp(1)).toBe(90);
+    expect(getMonsterMaxHp(10)).toBe(2600);
+    expect(getMonsterMaxHp(11)).toBe(3380);
+    expect(getMonsterAttack(1)).toBe(8);
+    expect(getMonsterAttack(10)).toBe(36);
+    expect(getMonsterAttack(11)).toBe(39);
   });
 
   it("rejects invalid balance round inputs", () => {
