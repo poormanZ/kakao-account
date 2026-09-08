@@ -32,13 +32,19 @@ export const startTurn = (state: GameState, { generateCards = defaultCardGenerat
   return { ...state, round: { ...state.round, phase: "select", candidates: { cards, rerollsUsed: 0, selectedCardId: null } } };
 };
 
-export const rerollTurnCandidates = (state: GameState, rerollIndexes: number[], generateCards: CardGenerator): GameState => {
+export const rerollTurnCandidates = (state: GameState, generateCards: CardGenerator): GameState => {
   if (state.round.phase !== "select") throw new Error("Candidates can only be rerolled during selection");
   const synergy = findBoardSynergy(state.board);
   const rerollLimit = getRerollLimit(synergy.races.goblin ?? 0);
   if (state.round.candidates.rerollsUsed >= rerollLimit) throw new Error("Reroll limit reached");
-  const nextCards = generateCards(rerollIndexes.length);
-  const candidates = rerollCandidates(state.round.candidates.cards, rerollIndexes, nextCards, state.round.candidates.rerollsUsed, rerollLimit);
+  const nextCards = generateCards(CARDS_PER_TURN);
+  const candidates = rerollCandidates(
+    state.round.candidates.cards,
+    Array.from({ length: CARDS_PER_TURN }, (_, index) => index),
+    nextCards,
+    state.round.candidates.rerollsUsed,
+    rerollLimit,
+  );
   return { ...state, round: { ...state.round, candidates } };
 };
 
