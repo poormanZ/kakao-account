@@ -1,4 +1,4 @@
-import { createInitialForgeState, type ForgeGameState, type ForgeWeapon } from "./forge";
+import { createInitialForgeState, type ForgeGameState, type ForgeSkills, type ForgeWeapon } from "./forge";
 
 export interface ForgeSessionEnv { GAME_DB: D1Database; }
 export interface ForgeSessionRecord { state: ForgeGameState; shopWeapons: ForgeShopWeapon[]; version: number; }
@@ -15,15 +15,17 @@ const isWeapon = (value: unknown): value is ForgeWeapon => {
     && isNonNegativeInteger(value.baseDamage) && value.baseDamage > 0 && value.rarity === "common"
     && isNonNegativeInteger(value.enhancementLevel);
 };
+const isForgeSkills = (value: unknown): value is ForgeSkills => {
+  if (!isRecord(value)) return false;
+  return isNonNegativeInteger(value.enhancementBonusLevel)
+    && isNonNegativeInteger(value.greatSuccessLevel)
+    && isNonNegativeInteger(value.sellBonusLevel);
+};
 const isForgeState = (value: unknown): value is ForgeGameState => {
   if (!isRecord(value) || !isNonNegativeInteger(value.gold)) return false;
   const weapon = value.currentWeapon;
-  const skills = value.skills;
   if (weapon !== null && !isWeapon(weapon)) return false;
-  if (!isRecord(skills)) return false;
-  return isNonNegativeInteger(skills.enhancementBonusLevel)
-    && isNonNegativeInteger(skills.greatSuccessLevel)
-    && isNonNegativeInteger(skills.sellBonusLevel);
+  return isForgeSkills(value.skills);
 };
 const parseJson = (value: string): unknown => { try { return JSON.parse(value); } catch { return null; } };
 const parseState = (value: string): ForgeGameState => {
@@ -44,7 +46,7 @@ export const loadForgeSession = async (env: ForgeSessionEnv, accountUserId: numb
   const state = parseState(row.current_weapon_json);
   if (state.gold !== row.gold) throw new Error("Stored forge gold is inconsistent");
   const skills = parseJson(row.skills_json);
-  if (!isRecord(skills) || !isForgeState({ ...state, skills })) throw new Error("Stored forge skills are invalid");
+  if (!isForgeSkills(skills)) throw new Error("Stored forge skills are invalid");
   return { state: { ...state, skills }, shopWeapons: parseShopWeapons(row.shop_weapons_json), version: row.version };
 };
 export const createForgeSession = async (env: ForgeSessionEnv, accountUserId: number, shopWeapons: ForgeShopWeapon[]): Promise<ForgeSessionRecord> => {
