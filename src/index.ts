@@ -154,7 +154,7 @@ const worker = {
     }
 
     if (url.pathname.startsWith("/api/games/forge")) {
-      let user: UserRow;
+      let user: UserRow | null;
       try { user = await getAuthenticatedUser(request, env.DB, SESSION_COOKIE); }
       catch (error) { logError("forge.user_lookup_failed", error, context); return json({ error: "Authentication service unavailable" }, { status: 503 }, secure); }
       if (!user) return json({ error: "Unauthorized" }, { status: 401 }, secure);
