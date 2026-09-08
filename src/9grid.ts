@@ -15,7 +15,7 @@ export type Board = Array<Card | null>;
 export interface CandidateState { cards: Card[]; rerollsUsed: number; selectedCardId: string | null; }
 export type GamePhase = "reroll" | "select" | "placement" | "combat" | "game_over";
 export interface RoundState { round: number; turn: number; playerHp: number; playerMaxHp: number; monsterHp: number; monsterMaxHp: number; phase: GamePhase; candidates: CandidateState; }
-export interface GameState { board: Board; playerStats: PlayerStats; round: RoundState; maxClearedRound: number; lastRoundClearTurn: number; gameOver: boolean; }
+export interface GameState { board: Board; playerStats: PlayerStats; round: RoundState; maxClearedRound: number; lastRoundClearTurn: number; lastRoundClearAt: string | null; gameOver: boolean; }
 export interface SynergyLine { axis: "row" | "column"; index: number; race: Race | null; job: Job | null; }
 export interface SynergyResult { lines: SynergyLine[]; races: Partial<Record<Race, number>>; jobs: Partial<Record<Job, number>>; }
 
@@ -28,6 +28,7 @@ export const createInitialState = (playerMaxHp = INITIAL_PLAYER_STATS.maxHp, mon
   round: { round: 1, turn: 1, playerHp: playerMaxHp, playerMaxHp, monsterHp: monsterMaxHp, monsterMaxHp, phase: "reroll", candidates: { cards: [], rerollsUsed: 0, selectedCardId: null } },
   maxClearedRound: 0,
   lastRoundClearTurn: 0,
+  lastRoundClearAt: null,
   gameOver: false,
 });
 
@@ -79,10 +80,11 @@ export const advanceTurn = (state: GameState): GameState => {
   if (state.round.turn >= MAX_TURNS_PER_ROUND) throw new Error("Round turn limit reached");
   return { ...state, round: { ...state.round, turn: state.round.turn + 1, phase: "reroll", candidates: { cards: [...state.round.candidates.cards], rerollsUsed: 0, selectedCardId: null } } };
 };
-export const clearRound = (state: GameState, nextMonsterMaxHp: number): GameState => ({
+export const clearRound = (state: GameState, nextMonsterMaxHp: number, clearedAt = new Date().toISOString()): GameState => ({
   ...state,
   maxClearedRound: state.round.round,
   lastRoundClearTurn: state.round.turn,
+  lastRoundClearAt: clearedAt,
   round: { ...state.round, round: state.round.round + 1, turn: 1, monsterHp: nextMonsterMaxHp, monsterMaxHp: nextMonsterMaxHp, phase: "reroll", candidates: { cards: [...state.round.candidates.cards], rerollsUsed: 0, selectedCardId: null } },
 });
 export const endGame = (state: GameState): GameState => ({ ...state, gameOver: true, round: { ...state.round, phase: "game_over" } });
