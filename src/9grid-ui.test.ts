@@ -32,6 +32,26 @@ describe("9Grid UI", () => {
     expect(html).toContain("MAGE LV");
   });
 
+  it("renders concise race, job, and synergy effect descriptions", async () => {
+    const response = render9GridPage({ id: 7, nickname: "poorman", profile_image_url: null });
+    const html = await response.text();
+
+    expect(html).toContain("RACE // 종족");
+    expect(html).toContain("GOBLIN");
+    expect(html).toContain("시너지 LV마다 리롤 +1회");
+    expect(html).toContain("ELF");
+    expect(html).toContain("시너지 LV마다 공격 횟수 +1");
+    expect(html).toContain("DWARF");
+    expect(html).toContain("시너지 LV마다 카드 배치 능력치 +1");
+    expect(html).toContain("DRAGON");
+    expect(html).toContain("시너지 LV마다 라운드 점수 +1배");
+    expect(html).toContain("JOB // 직업");
+    expect(html).toContain("WARRIOR");
+    expect(html).toContain("TANK");
+    expect(html).toContain("HEALER");
+    expect(html).toContain("MAGE");
+  });
+
   it("removes per-card reroll selection and exposes all-card reroll plus restart", async () => {
     const response = render9GridPage({ id: 7, nickname: "poorman", profile_image_url: null });
     const html = await response.text();
