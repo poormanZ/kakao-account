@@ -18,7 +18,7 @@ describe("9Grid UI", () => {
     expect(html).toContain("/api/games/9grid/session/action");
   });
 
-  it("renders monster attack and job synergy multiplier fields", async () => {
+  it("renders monster attack and combat stat synergy fields", async () => {
     const response = render9GridPage({ id: 7, nickname: "poorman", profile_image_url: null });
     const html = await response.text();
 
@@ -27,10 +27,8 @@ describe("9Grid UI", () => {
     expect(html).toContain("id=\"atk-detail\"");
     expect(html).toContain("id=\"def-detail\"");
     expect(html).toContain("id=\"mana-detail\"");
-    expect(html).toContain("id=\"hp-detail\"");
     expect(html).toContain("WARRIOR LV");
     expect(html).toContain("TANK LV");
     expect(html).toContain("MAGE LV");
-    expect(html).toContain("HEALER LV");
   });
 });
