@@ -31,7 +31,7 @@ export const save9GridScore = async (_request: Request, env: ScoreEnv, user: Aut
     const score = calculate9GridScore(state.maxClearedRound);
     const clearAt = state.lastRoundClearAt ?? new Date().toISOString();
     await dbForScores(env)
-      .prepare(`INSERT INTO "9grid_scores" (account_user_id, max_round, last_round_clear_turn, remaining_hp, score, last_round_clear_at) VALUES (?, ?, ?, ?, ?, ?)`)
+      .prepare(`INSERT INTO "9grid_scores" (account_user_id, max_round, last_round_clear_turn, remaining_hp, score, last_round_clear_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(account_user_id) DO UPDATE SET max_round = excluded.max_round, last_round_clear_turn = excluded.last_round_clear_turn, remaining_hp = excluded.remaining_hp, score = excluded.score, last_round_clear_at = excluded.last_round_clear_at WHERE excluded.score > "9grid_scores".score OR (excluded.score = "9grid_scores".score AND excluded.last_round_clear_at < "9grid_scores".last_round_clear_at)`)
       .bind(user.id, state.maxClearedRound, state.lastRoundClearTurn, state.round.playerHp, score, clearAt)
       .run();
     return scoreJson({ saved: true, score: { score, max_round: state.maxClearedRound, last_round_clear_at: clearAt } });
@@ -49,9 +49,9 @@ export const get9GridBestScore = async (env: ScoreEnv, user: AuthUser): Promise<
 
 export const get9GridMyRank = async (env: ScoreEnv, user: AuthUser): Promise<Response> => {
   try {
-    const best = await dbForScores(env).prepare(`SELECT score, max_round, last_round_clear_at FROM "9grid_scores" WHERE account_user_id = ? ORDER BY score DESC, last_round_clear_at ASC, id ASC LIMIT 1`).bind(user.id).first<Pick<NineGridScore, "score" | "max_round" | "last_round_clear_at">>();
+    const best = await dbForScores(env).prepare(`SELECT id, score, max_round, last_round_clear_at FROM "9grid_scores" WHERE account_user_id = ? LIMIT 1`).bind(user.id).first<Pick<NineGridScore, "id" | "score" | "max_round" | "last_round_clear_at">>();
     if (!best) return scoreJson({ rank: null, score: null });
-    const rankRow = await dbForScores(env).prepare(`SELECT COUNT(*) + 1 AS rank FROM "9grid_scores" WHERE score > ? OR (score = ? AND last_round_clear_at < ?)`).bind(best.score, best.score, best.last_round_clear_at).first<{ rank: number }>();
+    const rankRow = await dbForScores(env).prepare(`SELECT COUNT(*) + 1 AS rank FROM "9grid_scores" WHERE score > ? OR (score = ? AND last_round_clear_at < ?) OR (score = ? AND last_round_clear_at = ? AND id < ?)`).bind(best.score, best.score, best.last_round_clear_at, best.score, best.last_round_clear_at, best.id).first<{ rank: number }>();
     return scoreJson({ rank: rankRow?.rank ?? null, score: best });
   } catch { return scoreJson({ error: "Score service unavailable" }, 503); }
 };
