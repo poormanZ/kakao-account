@@ -24,6 +24,7 @@ describe("9Grid UI", () => {
 
     expect(html).toContain("MONSTER ATTACK");
     expect(html).toContain("id=\"monster-attack\"");
+    expect(html).toContain("id=\"monster-attack-top\"");
     expect(html).toContain("id=\"atk-detail\"");
     expect(html).toContain("id=\"def-detail\"");
     expect(html).toContain("id=\"mana-detail\"");
@@ -52,7 +53,7 @@ describe("9Grid UI", () => {
     expect(html).toContain("MAGE");
   });
 
-  it("removes per-card reroll selection and exposes all-card reroll plus restart", async () => {
+  it("keeps all-card reroll and restart controls", async () => {
     const response = render9GridPage({ id: 7, nickname: "poorman", profile_image_url: null });
     const html = await response.text();
 
@@ -64,7 +65,7 @@ describe("9Grid UI", () => {
     expect(html).not.toContain("rerollSet");
   });
 
-  it("renders a clearer grouped status layout and candidate phase guidance", async () => {
+  it("renders the reference-inspired hierarchy and responsive layout", async () => {
     const response = render9GridPage({ id: 7, nickname: "poorman", profile_image_url: null });
     const html = await response.text();
 
@@ -72,11 +73,13 @@ describe("9Grid UI", () => {
     expect(html).toContain("PLAYER STATUS");
     expect(html).toContain("ENEMY");
     expect(html).toContain("RUN STATE");
-    expect(html).toContain("SELECT CARD → PLACE ON BOARD");
+    expect(html).toContain("SELECT CARD → PLACE");
     expect(html).toContain("id=\"candidate-phase\"");
     expect(html).toContain("id=\"candidate-help\"");
-    expect(html).toContain("align-items:start");
-    expect(html).toContain("font-size:23px");
-    expect(html).toContain("font-size:17px");
+    expect(html).toContain("grid-template-columns:minmax(0,1.08fr) minmax(380px,.82fr) minmax(215px,.42fr)");
+    expect(html).toContain("BOARD <span class=\"accent\">// 3 × 3</span>");
+    expect(html).toContain("CANDIDATES <span class=\"accent\">// 3 CARDS</span>");
+    expect(html).toContain("RACE // 종족 효과");
+    expect(html).toContain("JOB // 직업 효과");
   });
 });
