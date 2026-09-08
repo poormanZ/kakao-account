@@ -27,21 +27,28 @@ describe("9Grid action adapter", () => {
     expect(() => parseNineGridAction({ type: "unknown" })).toThrow("Unsupported 9Grid action");
   });
 
-  it("runs reroll -> select -> place -> combat and prepares the next turn automatically", () => {
+  it("runs reroll -> select -> place -> combat and waits for the next manual reroll", () => {
+    let generationCount = 0;
+    const trackedGenerator = (count: number) => {
+      generationCount += 1;
+      return cards.slice(0, count);
+    };
     let state = createInitialState(100, 100);
-    state = applyNineGridAction(state, parseNineGridAction({ type: "start" }), { generateCards });
+    state = applyNineGridAction(state, parseNineGridAction({ type: "start" }), { generateCards: trackedGenerator });
     expect(state.round.phase).toBe("reroll");
-    state = applyNineGridAction(state, parseNineGridAction({ type: "reroll" }), { generateCards });
+    state = applyNineGridAction(state, parseNineGridAction({ type: "reroll" }), { generateCards: trackedGenerator });
     expect(state.round.phase).toBe("select");
-    state = applyNineGridAction(state, parseNineGridAction({ type: "select", cardId: "a" }), { generateCards });
-    state = applyNineGridAction(state, parseNineGridAction({ type: "place", boardIndex: 0 }), { generateCards });
+    expect(generationCount).toBe(2);
+    state = applyNineGridAction(state, parseNineGridAction({ type: "select", cardId: "a" }), { generateCards: trackedGenerator });
+    state = applyNineGridAction(state, parseNineGridAction({ type: "place", boardIndex: 0 }), { generateCards: trackedGenerator });
     expect(state.round.phase).toBe("combat");
     expect(state.board[0]?.id).toBe("a");
-    state = applyNineGridAction(state, parseNineGridAction({ type: "combat" }), { generateCards, monsterAttack: 0 });
+    state = applyNineGridAction(state, parseNineGridAction({ type: "combat" }), { generateCards: trackedGenerator, monsterAttack: 0 });
     expect(state.round.phase).toBe("reroll");
     expect(state.round.turn).toBe(2);
     expect(state.round.candidates.cards).toHaveLength(3);
     expect(state.round.candidates.rerollsUsed).toBe(0);
+    expect(generationCount).toBe(2);
   });
 
   it("restarts from a clean round 1 state", () => {
