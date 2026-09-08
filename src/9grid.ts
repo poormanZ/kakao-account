@@ -77,12 +77,12 @@ export const getDragonScore = (round: number, dragonSynergyLevel: number): numbe
 export const advanceTurn = (state: GameState): GameState => {
   if (state.gameOver) throw new Error("Game is already over");
   if (state.round.turn >= MAX_TURNS_PER_ROUND) throw new Error("Round turn limit reached");
-  return { ...state, round: { ...state.round, turn: state.round.turn + 1, phase: "reroll", candidates: { cards: [], rerollsUsed: 0, selectedCardId: null } } };
+  return { ...state, round: { ...state.round, turn: state.round.turn + 1, phase: "reroll", candidates: { cards: [...state.round.candidates.cards], rerollsUsed: 0, selectedCardId: null } } };
 };
 export const clearRound = (state: GameState, nextMonsterMaxHp: number): GameState => ({
   ...state,
   maxClearedRound: state.round.round,
   lastRoundClearTurn: state.round.turn,
-  round: { ...state.round, round: state.round.round + 1, turn: 1, monsterHp: nextMonsterMaxHp, monsterMaxHp: nextMonsterMaxHp, phase: "reroll", candidates: { cards: [], rerollsUsed: 0, selectedCardId: null } },
+  round: { ...state.round, round: state.round.round + 1, turn: 1, monsterHp: nextMonsterMaxHp, monsterMaxHp: nextMonsterMaxHp, phase: "reroll", candidates: { cards: [...state.round.candidates.cards], rerollsUsed: 0, selectedCardId: null } },
 });
 export const endGame = (state: GameState): GameState => ({ ...state, gameOver: true, round: { ...state.round, phase: "game_over" } });
