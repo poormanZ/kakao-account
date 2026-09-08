@@ -8,11 +8,7 @@ class FakeDb {
   private conflict = false;
   private lastActionId: string | null = null;
   private lastActionResponseJson: string | null = null;
-
-  prepare(query: string) {
-    return new FakeStatement(this, query);
-  }
-
+  prepare(query: string) { return new FakeStatement(this, query); }
   getState(): string | null { return this.stateJson; }
   setState(value: string): void { this.stateJson = value; }
   setConflict(value: boolean): void { this.conflict = value; }
@@ -21,43 +17,22 @@ class FakeDb {
   setVersion(value: number): void { this.version = value; }
   clearState(): void { this.stateJson = null; }
   getLastActionId(): string | null { return this.lastActionId; }
-  setLastAction(id: string | null, response: string | null): void {
-    this.lastActionId = id;
-    this.lastActionResponseJson = response;
-  }
+  setLastAction(id: string | null, response: string | null): void { this.lastActionId = id; this.lastActionResponseJson = response; }
   getLastActionResponseJson(): string | null { return this.lastActionResponseJson; }
 }
 
 class FakeStatement {
   constructor(private readonly db: FakeDb, private readonly query: string) {}
-
-  bind(...values: unknown[]): FakeStatementBound {
-    return new FakeStatementBound(this.db, this.query, values);
-  }
+  bind(...values: unknown[]): FakeStatementBound { return new FakeStatementBound(this.db, this.query, values); }
 }
 
 class FakeStatementBound {
-  constructor(
-    private readonly db: FakeDb,
-    private readonly query: string,
-    private readonly values: unknown[],
-  ) {}
-
+  constructor(private readonly db: FakeDb, private readonly query: string, private readonly values: unknown[]) {}
   async first<T>(): Promise<T | null> {
-    if (this.query.startsWith("SELECT")) {
-      const stateJson = this.db.getState();
-      return stateJson === null
-        ? null
-        : ({
-          state_json: stateJson,
-          version: this.db.getVersion(),
-          last_action_id: this.db.getLastActionId(),
-          last_action_response_json: this.db.getLastActionResponseJson(),
-        } as T);
-    }
-    return null;
+    if (!this.query.startsWith("SELECT")) return null;
+    const stateJson = this.db.getState();
+    return stateJson === null ? null : ({ state_json: stateJson, version: this.db.getVersion(), last_action_id: this.db.getLastActionId(), last_action_response_json: this.db.getLastActionResponseJson() } as T);
   }
-
   async run(): Promise<{ success: true; meta: { changes: number } }> {
     if (this.query.startsWith("INSERT")) {
       this.db.setState(String(this.values[1]));
@@ -65,7 +40,6 @@ class FakeStatementBound {
       this.db.setLastAction(String(this.values[2]), String(this.values[3]));
       return { success: true, meta: { changes: 1 } };
     }
-
     if (this.query.startsWith("UPDATE")) {
       if (this.db.shouldConflict()) return { success: true, meta: { changes: 0 } };
       this.db.setState(String(this.values[0]));
@@ -73,26 +47,18 @@ class FakeStatementBound {
       this.db.setLastAction(String(this.values[2]), String(this.values[3]));
       return { success: true, meta: { changes: 1 } };
     }
-
     if (this.query.startsWith("DELETE")) this.db.clearState();
     return { success: true, meta: { changes: 1 } };
   }
 }
 
-const createEnv = (db: FakeDb) => ({
-  DB: db as unknown as D1Database,
-  NINEGRID_MONSTER_ATTACK: "0",
-});
-
+const createEnv = (db: FakeDb) => ({ DB: db as unknown as D1Database, NINEGRID_MONSTER_ATTACK: "0" });
 let nextAction = 0;
-const post = (body: Record<string, unknown>) => new Request(
-  "https://example.com/api/games/9grid/session/action",
-  {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ actionId: `test-action-${++nextAction}`, ...body }),
-  },
-);
+const post = (body: Record<string, unknown>) => new Request("https://example.com/api/games/9grid/session/action", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ actionId: `test-action-${++nextAction}`, ...body }),
+});
 
 describe("9Grid HTTP session", () => {
   it("starts and persists a session for the authenticated internal user", async () => {
@@ -110,28 +76,15 @@ describe("9Grid HTTP session", () => {
     const db = new FakeDb();
     const env = createEnv(db);
     const actionId = "duplicate-action-123456";
-    const first = await handleNineGridSession(
-      new Request("https://example.com/api/games/9grid/session/action", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ actionId, type: "start" }),
-      }),
-      env,
-      7,
-      "action",
-    );
+    const makeRequest = () => new Request("https://example.com/api/games/9grid/session/action", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ actionId, type: "start" }),
+    });
+    const first = await handleNineGridSession(makeRequest(), env, 7, "action");
     const firstBody = await first.json();
     const version = db.getVersion();
-    const replay = await handleNineGridSession(
-      new Request("https://example.com/api/games/9grid/session/action", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ actionId, type: "start" }),
-      }),
-      env,
-      7,
-      "action",
-    );
+    const replay = await handleNineGridSession(makeRequest(), env, 7, "action");
     expect(replay.status).toBe(200);
     expect(await replay.json()).toEqual({ ...firstBody, version });
     expect(db.getVersion()).toBe(version);
@@ -146,16 +99,7 @@ describe("9Grid HTTP session", () => {
   it("rejects non-JSON and malformed action requests", async () => {
     const db = new FakeDb();
     const env = createEnv(db);
-    const wrongContentType = await handleNineGridSession(
-      new Request("https://example.com/api/games/9grid/session/action", {
-        method: "POST",
-        headers: { "Content-Type": "text/plain" },
-        body: "start",
-      }),
-      env,
-      7,
-      "action",
-    );
+    const wrongContentType = await handleNineGridSession(new Request("https://example.com/api/games/9grid/session/action", { method: "POST", headers: { "Content-Type": "text/plain" }, body: "start" }), env, 7, "action");
     expect(wrongContentType.status).toBe(400);
     db.setState(JSON.stringify(createInitialState()));
     const malformed = await handleNineGridSession(post({ type: "place", boardIndex: 99 }), env, 7, "action");
@@ -188,18 +132,15 @@ describe("9Grid HTTP session", () => {
     expect(db.getVersion()).toBe(versionAfterReroll);
   });
 
-  it("rejects action requests without an action id", async () => {
-    const response = await handleNineGridSession(
-      new Request("https://example.com/api/games/9grid/session/action", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "start" }),
-      }),
-      createEnv(new FakeDb()),
-      7,
-      "action",
-    );
-    expect(response.status).toBe(400);
+  it("accepts legacy clients without an action id and returns one", async () => {
+    const response = await handleNineGridSession(new Request("https://example.com/api/games/9grid/session/action", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "start" }),
+    }), createEnv(new FakeDb()), 7, "action");
+    expect(response.status).toBe(200);
+    const body = await response.json() as { actionId: string };
+    expect(body.actionId).toEqual(expect.any(String));
   });
 
   it("enforces GET-only access for the session endpoint", async () => {
@@ -212,12 +153,7 @@ describe("9Grid HTTP session", () => {
   it("loads the persisted state through GET", async () => {
     const db = new FakeDb();
     db.setState(JSON.stringify(createInitialState()));
-    const response = await handleNineGridSession(
-      new Request("https://example.com/api/games/9grid/session", { method: "GET" }),
-      createEnv(db),
-      7,
-      "session",
-    );
+    const response = await handleNineGridSession(new Request("https://example.com/api/games/9grid/session", { method: "GET" }), createEnv(db), 7, "session");
     expect(response.status).toBe(200);
     const body = (await response.json()) as { state: ReturnType<typeof createInitialState> };
     expect(body.state.round.round).toBe(1);
