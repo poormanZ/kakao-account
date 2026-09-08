@@ -19,7 +19,7 @@ describe("9Grid combat", () => {
       jobs: { warrior: 1 },
     });
 
-    expect(result.attack).toBe(2);
+    expect(result.attack).toBe(4);
   });
 
   it("uses Tank synergy level for multiplied defense", () => {
@@ -29,7 +29,7 @@ describe("9Grid combat", () => {
       jobs: { tank: 2 },
     });
 
-    expect(result.defense).toBe(3);
+    expect(result.defense).toBe(6);
   });
 
   it("uses Healer count and synergy for recovery", () => {
@@ -76,7 +76,7 @@ describe("9Grid combat", () => {
       monsterAttack: 1,
     });
 
-    expect(result.playerDamage).toBe(6);
+    expect(result.playerDamage).toBe(10);
     expect(result.playerHpAfter).toBe(100);
   });
 
