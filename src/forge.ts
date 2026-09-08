@@ -20,7 +20,7 @@ export type ForgeSkills = {
 
 export type ForgeGameState = {
   gold: number;
-  currentWeapon: ForgeWeapon;
+  currentWeapon: ForgeWeapon | null;
   skills: ForgeSkills;
 };
 
@@ -48,9 +48,7 @@ export const createInitialForgeState = (): ForgeGameState => ({
 });
 
 const assertNonNegativeInteger = (value: number, name: string): void => {
-  if (!Number.isInteger(value) || value < 0) {
-    throw new Error(`Invalid ${name}`);
-  }
+  if (!Number.isInteger(value) || value < 0) throw new Error(`Invalid ${name}`);
 };
 
 export const getWeaponDamage = (weapon: ForgeWeapon): number => {
@@ -76,8 +74,7 @@ export const getUpgradeSuccessRate = (
   skills: ForgeSkills,
 ): number => {
   assertNonNegativeInteger(skills.enhancementBonusLevel, "enhancement bonus level");
-  const baseRate = getBaseSuccessRate(enhancementLevel);
-  return Math.min(100, baseRate + skills.enhancementBonusLevel);
+  return Math.min(100, getBaseSuccessRate(enhancementLevel) + skills.enhancementBonusLevel);
 };
 
 export const getGreatSuccessRate = (skills: ForgeSkills): number => {
@@ -85,13 +82,9 @@ export const getGreatSuccessRate = (skills: ForgeSkills): number => {
   return Math.min(100, skills.greatSuccessLevel);
 };
 
-export const getSellPrice = (
-  weapon: ForgeWeapon,
-  skills: ForgeSkills,
-): number => {
+export const getSellPrice = (weapon: ForgeWeapon, skills: ForgeSkills): number => {
   assertNonNegativeInteger(skills.sellBonusLevel, "sell bonus level");
-  const damage = getWeaponDamage(weapon);
-  return Math.floor(damage * (100 + skills.sellBonusLevel) / 100);
+  return Math.floor(getWeaponDamage(weapon) * (100 + skills.sellBonusLevel) / 100);
 };
 
 export const resolveUpgrade = (
@@ -99,30 +92,16 @@ export const resolveUpgrade = (
   successRoll: number,
   greatSuccessRoll: number,
 ): UpgradeResult => {
-  if (!Number.isFinite(successRoll) || successRoll < 0 || successRoll >= 1) {
-    throw new Error("Invalid success roll");
-  }
-  if (!Number.isFinite(greatSuccessRoll) || greatSuccessRoll < 0 || greatSuccessRoll >= 1) {
-    throw new Error("Invalid great success roll");
-  }
-
-  const { currentWeapon: weapon, skills } = state;
+  if (!Number.isFinite(successRoll) || successRoll < 0 || successRoll >= 1) throw new Error("Invalid success roll");
+  if (!Number.isFinite(greatSuccessRoll) || greatSuccessRoll < 0 || greatSuccessRoll >= 1) throw new Error("Invalid great success roll");
+  const weapon = state.currentWeapon;
+  if (!weapon) throw new Error("No weapon equipped");
   const level = weapon.enhancementLevel;
   const cost = getUpgradeCost(level);
-
-  if (level >= FORGE_MAX_ENHANCEMENT || state.gold < cost) {
-    throw new Error("Upgrade unavailable");
-  }
-
-  const successRate = getUpgradeSuccessRate(level, skills);
-  if (successRoll >= successRate / 100) {
-    return { kind: "failed", weapon: null, cost };
-  }
-
-  const isGreatSuccess = greatSuccessRoll < getGreatSuccessRate(skills) / 100;
-  const levelIncrease = isGreatSuccess ? 2 : 1;
-  const nextLevel = Math.min(FORGE_MAX_ENHANCEMENT, level + levelIncrease);
-
+  if (level >= FORGE_MAX_ENHANCEMENT || state.gold < cost) throw new Error("Upgrade unavailable");
+  if (successRoll >= getUpgradeSuccessRate(level, state.skills) / 100) return { kind: "failed", weapon: null, cost };
+  const isGreatSuccess = greatSuccessRoll < getGreatSuccessRate(state.skills) / 100;
+  const nextLevel = Math.min(FORGE_MAX_ENHANCEMENT, level + (isGreatSuccess ? 2 : 1));
   return {
     kind: isGreatSuccess ? "great_success" : "success",
     weapon: { ...weapon, enhancementLevel: nextLevel },
