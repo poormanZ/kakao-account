@@ -1,5 +1,6 @@
 import { getAuthenticatedUser, getCookie, getSessionUser, hashSessionId, type AuthUser } from "./auth";
 import { render9GridPage } from "./9grid-ui";
+import { render9GridScorePage } from "./9grid-score-ui";
 import { handleNineGridSession } from "./9grid-http";
 import { get9GridBestScore, get9GridMyRank, get9GridRanking, save9GridScore } from "./9grid-score";
 import { renderPortalPage } from "./portal-ui";
@@ -128,11 +129,11 @@ const worker = {
     if (request.method === "GET" && url.pathname === "/9grid") {
       let user: UserRow | null = null;
       try { user = await getAuthenticatedUser(request, env.DB, SESSION_COOKIE); } catch (error) { logError("9grid.user_lookup_failed", error, context); }
-      return render9GridPage(user);
+      return render9GridScorePage(user);
     }
 
     if (url.pathname.startsWith("/api/games/9grid")) {
-      let user: UserRow | null;
+      let user: UserRow;
       try { user = await getAuthenticatedUser(request, env.DB, SESSION_COOKIE); }
       catch (error) { logError("9grid.user_lookup_failed", error, context); return json({ error: "Authentication service unavailable" }, { status: 503 }, secure); }
       if (!user) return json({ error: "Unauthorized" }, { status: 401 }, secure);
