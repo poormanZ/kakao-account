@@ -120,7 +120,7 @@ describe("9Grid turn state machine", () => {
   it("clears the first round around the intended mid-run pacing with an all-Warrior build", () => {
     const warrior = createCard("warrior", "goblin", "warrior");
     const warriorGenerator = (count: number) => Array.from({ length: count }, () => warrior);
-    let state = createInitialState(80, 100);
+    let state = createInitialState(80, 90);
 
     for (let turn = 1; turn <= 9 && state.maxClearedRound === 0; turn += 1) {
       state = rerollTurnCandidates(startTurn(state, { generateCards: warriorGenerator }), warriorGenerator);
@@ -143,7 +143,7 @@ describe("9Grid turn state machine", () => {
     ];
     const mixedGenerator = (count: number) => mixedCards.slice(0, count);
     const picks = ["warrior", "tank", "healer", "tank", "healer", "warrior", "healer", "warrior", "tank"];
-    let state = createInitialState(80, 100);
+    let state = createInitialState(80, 90);
 
     for (let turn = 1; turn <= 9; turn += 1) {
       state = rerollTurnCandidates(startTurn(state, { generateCards: mixedGenerator }), mixedGenerator);
@@ -168,7 +168,7 @@ describe("9Grid turn state machine", () => {
     expect(state.round.round).toBe(2);
     expect(state.round.turn).toBe(1);
     expect(state.round.phase).toBe("reroll");
-    expect(state.round.monsterMaxHp).toBe(180);
+    expect(state.round.monsterMaxHp).toBe(160);
   });
 
   it("ends the game when turn 9 ends with the monster alive", () => {

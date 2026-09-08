@@ -15,13 +15,13 @@ export const JOB_BASE_STAT_VALUES: Record<Job, number> = {
 };
 
 export const MONSTER_MAX_HP_BY_ROUND = [
-  100, 180, 300, 500, 800,
-  1100, 1500, 2050, 2800, 3800,
+  90, 160, 250, 380, 560,
+  800, 1100, 1500, 2000, 2600,
 ] as const;
 
 export const MONSTER_ATTACK_BY_ROUND = [
-  10, 14, 18, 22, 26,
-  30, 34, 38, 42, 46,
+  8, 10, 12, 14, 17,
+  20, 24, 28, 32, 36,
 ] as const;
 
 export const getMonsterMaxHp = (round: number): number => {
@@ -29,7 +29,7 @@ export const getMonsterMaxHp = (round: number): number => {
   const index = Math.min(round, MONSTER_MAX_HP_BY_ROUND.length) - 1;
   const last = MONSTER_MAX_HP_BY_ROUND[MONSTER_MAX_HP_BY_ROUND.length - 1];
   if (round <= MONSTER_MAX_HP_BY_ROUND.length) return MONSTER_MAX_HP_BY_ROUND[index];
-  return Math.ceil(last * Math.pow(1.35, round - MONSTER_MAX_HP_BY_ROUND.length));
+  return Math.ceil(last * Math.pow(1.3, round - MONSTER_MAX_HP_BY_ROUND.length));
 };
 
 export const getMonsterAttack = (round: number): number => {
@@ -37,7 +37,7 @@ export const getMonsterAttack = (round: number): number => {
   const index = Math.min(round, MONSTER_ATTACK_BY_ROUND.length) - 1;
   const last = MONSTER_ATTACK_BY_ROUND[MONSTER_ATTACK_BY_ROUND.length - 1];
   if (round <= MONSTER_ATTACK_BY_ROUND.length) return MONSTER_ATTACK_BY_ROUND[index];
-  return last + (round - MONSTER_ATTACK_BY_ROUND.length) * 4;
+  return last + (round - MONSTER_ATTACK_BY_ROUND.length) * 3;
 };
 
 export const getJobBaseStatValue = (job: Job): number => JOB_BASE_STAT_VALUES[job];

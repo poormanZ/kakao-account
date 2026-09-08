@@ -6,6 +6,7 @@ import {
   calculateWarriorDamage,
   getElfAttackCountBonus,
 } from "./9grid-effects";
+import { INITIAL_PLAYER_STATS } from "./9grid-balance";
 
 export interface CombatStats {
   attack: number;
@@ -58,7 +59,7 @@ export const calculateRaceEffect = (race: Race, synergyLevel: number): number =>
 const countPlacedHealers = (board: Board): number =>
   board.reduce((count, card) => count + (card?.job === "healer" ? 1 : 0), 0);
 
-const defaultPlayerStats: PlayerStats = { attack: 1, defense: 1, maxHp: 100, mana: 1 };
+const defaultPlayerStats: PlayerStats = { ...INITIAL_PLAYER_STATS };
 
 export const calculateCombatStats = (
   synergy: SynergyResult,
