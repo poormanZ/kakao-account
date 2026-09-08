@@ -21,7 +21,7 @@ import { calculateCombat } from "./9grid-combat";
 
 export interface CardGenerator { (count: number): Card[]; }
 export interface TurnStartOptions { generateCards: CardGenerator; }
-export interface CombatTurnOptions { monsterAttack?: number; }
+export interface CombatTurnOptions { monsterAttack?: number; now?: () => string; }
 const defaultCardGenerator: CardGenerator = (count) => Array.from({ length: count }, (_, index) => createCard(`generated-${Date.now()}-${index}`, "goblin", "warrior"));
 
 export const startTurn = (state: GameState, { generateCards = defaultCardGenerator }: TurnStartOptions): GameState => {
@@ -72,13 +72,13 @@ export const placeTurnCard = (state: GameState, boardIndex: number): GameState =
   return applyPlacementStats(state, card, nextBoard);
 };
 
-export const resolveTurnCombat = (state: GameState, { monsterAttack }: CombatTurnOptions = {}): GameState => {
+export const resolveTurnCombat = (state: GameState, { monsterAttack, now = () => new Date().toISOString() }: CombatTurnOptions = {}): GameState => {
   if (state.round.phase !== "placement" && state.round.phase !== "combat") throw new Error("Combat is not ready");
   const synergy = findBoardSynergy(state.board);
   const result = calculateCombat({ synergy, playerStats: state.playerStats, playerHp: state.round.playerHp, playerMaxHp: state.round.playerMaxHp, monsterHp: state.round.monsterHp, monsterAttack: monsterAttack ?? getMonsterAttack(state.round.round), board: state.board });
   const combatState: GameState = { ...state, round: { ...state.round, phase: "combat", playerHp: result.playerHpAfter, playerMaxHp: result.playerStats.maxHp, monsterHp: result.monsterHpAfter } };
   if (result.playerDefeated) return { ...combatState, gameOver: true, round: { ...combatState.round, phase: "game_over" } };
-  if (result.monsterDefeated) return clearRound(combatState, getMonsterMaxHp(state.round.round + 1));
+  if (result.monsterDefeated) return clearRound(combatState, getMonsterMaxHp(state.round.round + 1), now());
   if (state.round.turn >= MAX_TURNS_PER_ROUND) return { ...combatState, gameOver: true, round: { ...combatState.round, phase: "game_over" } };
   return advanceTurn(combatState);
 };
