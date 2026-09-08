@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createInitialState } from "./9grid";
-import { save9GridScore } from "./9grid-score";
+import { calculate9GridScore, save9GridScore } from "./9grid-score";
 import type { AuthUser } from "./auth";
 
 class FakeDb {
@@ -54,6 +54,12 @@ const createEnv = (db: FakeDb) => ({ DB: db as unknown as D1Database });
 const user: AuthUser = { id: 7, nickname: null, profile_image_url: null };
 
 describe("9Grid score persistence", () => {
+  it("calculates score only from cleared rounds", () => {
+    expect(calculate9GridScore(0)).toBe(0);
+    expect(calculate9GridScore(1)).toBe(1000);
+    expect(calculate9GridScore(5)).toBe(5000);
+  });
+
   it("rejects saving when no server session exists", async () => {
     const db = new FakeDb();
     const response = await save9GridScore(new Request("https://example.com"), createEnv(db), user);
@@ -72,11 +78,12 @@ describe("9Grid score persistence", () => {
     expect(db.insertedValues).toBeNull();
   });
 
-  it("persists score values from server state instead of request data", async () => {
+  it("persists the round-based score from authoritative server state", async () => {
     const db = new FakeDb();
     const state = createInitialState();
     state.maxClearedRound = 4;
     state.lastRoundClearTurn = 7;
+    state.lastRoundClearAt = "2026-09-08T08:00:00.000Z";
     state.round.playerHp = 63;
     state.round.phase = "game_over";
     state.gameOver = true;
@@ -84,11 +91,7 @@ describe("9Grid score persistence", () => {
 
     const forgedRequest = new Request("https://example.com", {
       method: "POST",
-      body: JSON.stringify({
-        max_round: 999,
-        last_round_clear_turn: 1,
-        remaining_hp: 999,
-      }),
+      body: JSON.stringify({ score: 999999, max_round: 999 }),
       headers: { "Content-Type": "application/json" },
     });
 
@@ -96,9 +99,9 @@ describe("9Grid score persistence", () => {
     const body = (await response.json()) as {
       saved: boolean;
       score: {
+        score: number;
         max_round: number;
-        last_round_clear_turn: number;
-        remaining_hp: number;
+        last_round_clear_at: string;
       };
     };
 
@@ -106,11 +109,11 @@ describe("9Grid score persistence", () => {
     expect(body).toEqual({
       saved: true,
       score: {
+        score: 4000,
         max_round: 4,
-        last_round_clear_turn: 7,
-        remaining_hp: 63,
+        last_round_clear_at: "2026-09-08T08:00:00.000Z",
       },
     });
-    expect(db.insertedValues).toEqual([7, 4, 7, 63]);
+    expect(db.insertedValues).toEqual([7, 4, 7, 63, 4000, "2026-09-08T08:00:00.000Z"]);
   });
 });
