@@ -137,6 +137,15 @@ describe("9Grid HTTP session", () => {
     expect(body.state.round.round).toBe(1);
     expect(body.state.round.turn).toBe(1);
   });
+  it("loads a legacy session without the round-clear timestamp", async () => {
+    const db = new FakeDb();
+    const legacyStateJson = JSON.stringify(createInitialState(), (key, value) => key === "lastRoundClearAt" ? undefined : value);
+    db.setState(legacyStateJson);
+    const response = await handleNineGridSession(new Request("https://example.com/api/games/9grid/session", { method: "GET" }), createEnv(db), 7, "session");
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { state: ReturnType<typeof createInitialState> };
+    expect(body.state.lastRoundClearAt).toBeNull();
+  });
   it("rejects invalid user ids before touching storage", async () => {
     const db = new FakeDb();
     const response = await handleNineGridSession(post({ type: "start" }), createEnv(db), 0, "action");
