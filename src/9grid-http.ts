@@ -9,6 +9,7 @@ import {
 import { getMonsterAttack as getRoundMonsterAttack } from "./9grid-balance";
 import {
   create9GridSession,
+  isGameState,
   load9GridSession,
   load9GridSessionRecord,
   NineGridSessionConflictError,
@@ -52,12 +53,10 @@ const parseStoredResponse = (value: string): { state: GameState; monsterAttack: 
   try {
     const parsed: unknown = JSON.parse(value);
     if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return null;
-    const record = parsed as { state?: unknown; monsterAttack?: unknown };
-    if (typeof record.monsterAttack !== "number" || !Number.isFinite(record.monsterAttack)) return null;
-    return { state: record.state as GameState, monsterAttack: record.monsterAttack };
-  } catch {
-    return null;
-  }
+    const record = parsed as Record<string, unknown>;
+    if (!isGameState(record.state) || typeof record.monsterAttack !== "number" || !Number.isFinite(record.monsterAttack)) return null;
+    return { state: record.state, monsterAttack: record.monsterAttack };
+  } catch { return null; }
 };
 
 export const handleNineGridSession = async (
