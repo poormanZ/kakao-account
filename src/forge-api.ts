@@ -10,7 +10,6 @@ const ACTIONS = ["BUY_WEAPON", "UPGRADE", "SELL_WEAPON", "REFRESH_SHOP", "BUY_SK
 type ForgeAction = typeof ACTIONS[number];
 type ForgeActionBody = { action: ForgeAction; actionId: string; version: number; weaponId?: string; skill?: keyof ForgeSkills };
 
-const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
 const isForgeAction = (value: unknown): value is ForgeAction => typeof value === "string" && (ACTIONS as readonly string[]).includes(value);
 const parseAction = (body: Record<string, unknown> | null): ForgeActionBody | null => {
   if (!body || !isForgeAction(body.action) || typeof body.actionId !== "string" || !/^[A-Za-z0-9_-]{8,64}$/.test(body.actionId)) return null;
