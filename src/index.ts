@@ -1,5 +1,4 @@
 import { getAuthenticatedUser, getCookie, getSessionUser, hashSessionId, type AuthUser } from "./auth";
-import { render9GridPage } from "./9grid-ui";
 import { render9GridScorePage } from "./9grid-score-ui";
 import { handleNineGridSession } from "./9grid-http";
 import { get9GridBestScore, get9GridMyRank, get9GridRanking, save9GridScore } from "./9grid-score";
