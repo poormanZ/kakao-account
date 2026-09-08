@@ -72,11 +72,12 @@ describe("9Grid turn state machine", () => {
     let state = createInitialState(100, 1000);
     state.board[0] = createCard("h1", "goblin", "healer");
     state.board[1] = createCard("h2", "elf", "healer");
+    state.round.playerHp = 98;
     state = beginTurn(state);
     state = chooseTurnCard(state, "a");
     state = placeTurnCard(state, 2);
     state = resolveTurnCombat(state, { monsterAttack: 0 });
-    expect(state.round.playerHp).toBe(102);
+    expect(state.round.playerHp).toBe(100);
   });
 
   it("requires a reroll before selection", () => {
