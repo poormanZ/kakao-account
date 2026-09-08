@@ -12,6 +12,15 @@ export interface GameCatalogItem {
 
 export const GAME_CATALOG: GameCatalogItem[] = [
   {
+    slug: "forge",
+    name: "FORGE",
+    description: "대장간에서 무기를 구매하고 강화해 피해량을 키우세요. 강화에 실패하면 무기가 파괴됩니다.",
+    icon: "⚒",
+    status: "active",
+    sort_order: 1,
+    ranking_enabled: false,
+  },
+  {
     slug: "9grid",
     name: "9Grid",
     description: "3×3 보드에 카드를 배치하고 시너지를 만들어 몬스터를 처치하세요.",
