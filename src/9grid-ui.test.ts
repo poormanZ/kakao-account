@@ -31,4 +31,16 @@ describe("9Grid UI", () => {
     expect(html).toContain("TANK LV");
     expect(html).toContain("MAGE LV");
   });
+
+  it("removes per-card reroll selection and exposes all-card reroll plus restart", async () => {
+    const response = render9GridPage({ id: 7, nickname: "poorman", profile_image_url: null });
+    const html = await response.text();
+
+    expect(html).toContain("REROLL ALL");
+    expect(html).toContain("GAME RESTART");
+    expect(html).toContain("REROLL은 모든 카드를 한 번에 교체합니다");
+    expect(html).not.toContain("REROLL CHECKED");
+    expect(html).not.toContain("reroll-check");
+    expect(html).not.toContain("rerollSet");
+  });
 });
