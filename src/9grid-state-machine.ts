@@ -29,11 +29,11 @@ export const startTurn = (state: GameState, { generateCards = defaultCardGenerat
   if (state.round.phase !== "reroll") throw new Error("Turn has already started");
   const cards = generateCards(CARDS_PER_TURN);
   if (cards.length !== CARDS_PER_TURN) throw new Error("Card generator must return exactly three cards");
-  return { ...state, round: { ...state.round, phase: "select", candidates: { cards, rerollsUsed: 0, selectedCardId: null } } };
+  return { ...state, round: { ...state.round, phase: "reroll", candidates: { cards, rerollsUsed: 0, selectedCardId: null } } };
 };
 
 export const rerollTurnCandidates = (state: GameState, generateCards: CardGenerator): GameState => {
-  if (state.round.phase !== "select") throw new Error("Candidates can only be rerolled during selection");
+  if (state.round.phase !== "reroll" && state.round.phase !== "select") throw new Error("Candidates can only be rerolled before selection");
   const synergy = findBoardSynergy(state.board);
   const rerollLimit = getRerollLimit(synergy.races.goblin ?? 0);
   if (state.round.candidates.rerollsUsed >= rerollLimit) throw new Error("Reroll limit reached");
@@ -45,7 +45,7 @@ export const rerollTurnCandidates = (state: GameState, generateCards: CardGenera
     state.round.candidates.rerollsUsed,
     rerollLimit,
   );
-  return { ...state, round: { ...state.round, candidates } };
+  return { ...state, round: { ...state.round, phase: "select", candidates } };
 };
 
 export const chooseTurnCard = (state: GameState, cardId: string): GameState => {
@@ -73,7 +73,7 @@ export const placeTurnCard = (state: GameState, boardIndex: number): GameState =
 };
 
 export const resolveTurnCombat = (state: GameState, { monsterAttack }: CombatTurnOptions = {}): GameState => {
-  if (state.round.phase !== "select" && state.round.phase !== "placement" && state.round.phase !== "combat") throw new Error("Combat is not ready");
+  if (state.round.phase !== "placement" && state.round.phase !== "combat") throw new Error("Combat is not ready");
   const synergy = findBoardSynergy(state.board);
   const result = calculateCombat({ synergy, playerStats: state.playerStats, playerHp: state.round.playerHp, playerMaxHp: state.round.playerMaxHp, monsterHp: state.round.monsterHp, monsterAttack: monsterAttack ?? getMonsterAttack(state.round.round), board: state.board });
   const combatState: GameState = { ...state, round: { ...state.round, phase: "combat", playerHp: result.playerHpAfter, playerMaxHp: result.playerStats.maxHp, monsterHp: result.monsterHpAfter } };
