@@ -109,12 +109,6 @@ const applySkill = (state: ForgeGameState, skill: keyof ForgeSkills | undefined)
   const skills = { ...state.skills, [skill]: level + 1 };
   return { state: { ...state, gold: state.gold - cost, skills }, result: { kind: "buy_skill", skill, level: level + 1, cost } };
 };
-const getPreviousAction = async (db: D1DatabaseSession, accountUserId: number, actionId: string): Promise<Record<string, unknown> | null> => {
-  const previous = await db.prepare("SELECT result_json FROM forge_action_logs WHERE account_user_id = ? AND action_id = ? LIMIT 1").bind(accountUserId, actionId).first<{ result_json: string }>();
-  if (!previous) return null;
-  const parsed = JSON.parse(previous.result_json);
-  return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Record<string, unknown> : null;
-};
 export const getForgeSession = async (user: AuthUser | null, gameDb?: D1Database, request?: Request): Promise<Response> => {
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
   if (!gameDb) return Response.json({ error: "Forge service unavailable" }, { status: 503 });
@@ -135,9 +129,11 @@ export const handleForgeAction = async (request: Request, user: AuthUser | null,
   const db = createForgeActionDbSession(gameDb);
   try {
     const session = await loadOrCreate(db, user.id);
+    if (session.lastActionId === action.actionId && session.lastActionResult) {
+      return setBookmark(Response.json(session.lastActionResult, { headers: { "Cache-Control": "no-store" } }), db, request);
+    }
     if (session.version !== action.version) {
-      const current = await loadForgeSession(db, user.id);
-      return setBookmark(Response.json({ ...responseState(current ?? session), error: "Session changed" }, { status: 409, headers: { "Cache-Control": "no-store" } }), db, request);
+      return setBookmark(Response.json({ ...responseState(session), error: "Session changed" }, { status: 409, headers: { "Cache-Control": "no-store" } }), db, request);
     }
     let nextState = session.state;
     let nextShop = session.shopWeapons;
@@ -156,19 +152,13 @@ export const handleForgeAction = async (request: Request, user: AuthUser | null,
       nextShop = createShop();
       result = { kind: "refresh_shop" };
     } else ({ state: nextState, result } = applySkill(nextState, action.skill));
-    const pending = { state: nextState, shopWeapons: nextShop, version: action.version + 1 };
+    const pending = { state: nextState, shopWeapons: nextShop, version: action.version + 1, lastActionId: action.actionId, lastActionResult: null };
     const payload = responseState(pending, result);
-    try {
-      const committed = await commitForgeSessionAction(db, user.id, nextState, nextShop, action.version, action.action, action.actionId, JSON.stringify(payload));
-      return setBookmark(Response.json(responseState(committed, result), { headers: { "Cache-Control": "no-store" } }), db, request);
-    } catch (commitError) {
-      const previous = await getPreviousAction(db, user.id, action.actionId);
-      if (previous) return setBookmark(Response.json(previous, { headers: { "Cache-Control": "no-store" } }), db, request);
-      throw commitError;
-    }
+    const committed = await commitForgeSessionAction(db, user.id, nextState, nextShop, action.version, action.actionId, JSON.stringify(payload));
+    return setBookmark(Response.json(responseState(committed, result), { headers: { "Cache-Control": "no-store" } }), db, request);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Forge action failed";
-    const status = /Session changed|concurrently/i.test(message) ? 409 : /Insufficient|unavailable|not available|No weapon|already maxed|required/i.test(message) ? 400 : 500;
+    const status = /Session changed|concurrently/i.test(message) ? 409 : /Insufficient|unavailable|not available|No weapon|already maxed|required|Upgrade unavailable/i.test(message) ? 400 : 500;
     return setBookmark(Response.json({ error: status === 500 ? "Forge action failed" : message }, { status }), db, request);
   }
 };
