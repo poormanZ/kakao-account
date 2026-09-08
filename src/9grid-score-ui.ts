@@ -11,19 +11,16 @@ const escapeScoreText=(value)=>String(value).replaceAll('&','&amp;').replaceAll(
 async function scoreJson(url,options){const response=await fetch(url,options);const body=await response.json().catch(()=>null);if(!response.ok)throw new Error(body?.error||'request failed');return body;}
 async function loadScores(){if(!SCORE_AUTH){scoreEl('scoreStatus').textContent='로그인 후 개인 기록과 랭킹을 확인할 수 있습니다.';return;}try{const results=await Promise.all([scoreJson('/api/games/9grid/best'),scoreJson('/api/games/9grid/my-rank'),scoreJson('/api/games/9grid/ranking?limit=10')]);const best=results[0];const rank=results[1];const ranking=results[2];scoreEl('scoreStatus').textContent=rank.rank?'MY RANK: #'+rank.rank:'아직 저장된 플레이 기록이 없습니다.';scoreEl('scoreBest').textContent=best.score?'BEST: '+best.score.score+' PT · ROUND '+best.score.max_round:'BEST: -';const rows=(ranking.scores||[]).map((row,i)=>(i+1)+'. '+escapeScoreText(row.nickname||('USER #'+row.account_user_id))+' · '+row.score+' PT · R'+row.max_round);scoreEl('scoreRanking').innerHTML=rows.length?'<div>TOP 10 · ROUND 우선 / 동일 ROUND는 먼저 클리어한 기록 우선</div>'+rows.map((row)=>'<div>'+row+'</div>').join(''):'TOP 10: -';}catch(error){scoreEl('scoreStatus').textContent='랭킹 정보를 불러오지 못했습니다.';}}
 async function saveScore(){if(!SCORE_AUTH||scoreSaved||!window.__9gridGameOver)return;try{await scoreJson('/api/games/9grid/scores',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})});scoreSaved=true;await loadScores();}catch(error){const log=scoreEl('log');if(log){const line=document.createElement('div');line.className='danger';line.textContent='> SCORE SAVE FAILED';log.appendChild(line);log.scrollTop=log.scrollHeight;}}}
-const observer=new MutationObserver(()=>{if(window.__9gridGameOver)void saveScore();});
-observer.observe(document.body,{subtree:true,childList:true,characterData:true});
+async function checkGameOver(){if(scoreSaved)return;try{const body=await scoreJson('/api/games/9grid/session');if(body?.state?.gameOver||body?.state?.round?.phase==='game_over'){window.__9gridGameOver=true;await saveScore();}}catch(error){}}
 loadScores();
+void checkGameOver();
+setInterval(()=>{void checkGameOver();},1000);
 </script>`;
 
 export const render9GridScorePage = async (user: AuthUser | null): Promise<Response> => {
   const base = render9GridPage(user);
   const html = await base.text();
-  const instrumented = html
-    .replace("if(state.mhp===0){log('MONSTER DEFEATED", "if(state.mhp===0){log('MONSTER DEFEATED")
-    .replace("if(state.php===0){state.gameOver=true;", "if(state.php===0){window.__9gridGameOver=true;state.gameOver=true;")
-    .replace("if(state.turn>=9){state.gameOver=true;", "if(state.turn>=9){window.__9gridGameOver=true;state.gameOver=true;");
-  const enhanced = instrumented
+  const enhanced = html
     .replace("</main>", `${scorePanel}</main>`)
     .replace("</body>", `${scoreScript(Boolean(user))}</body>`);
   return new Response(enhanced, { status: base.status, headers: base.headers });
