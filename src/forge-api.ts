@@ -44,10 +44,16 @@ const sameOrigin = (request: Request): boolean => {
   const origin = request.headers.get("Origin");
   return !origin || origin === new URL(request.url).origin;
 };
+const isRecoverableSessionError = (error: unknown): boolean => error instanceof Error && error.message.startsWith("Stored forge ");
 const loadOrCreate = async (accountUserId: number, gameDb: D1Database): Promise<ForgeSessionRecord> => {
   const env = { GAME_DB: gameDb };
-  const existing = await loadForgeSession(env, accountUserId);
-  if (existing) return existing;
+  try {
+    const existing = await loadForgeSession(env, accountUserId);
+    if (existing) return existing;
+  } catch (error) {
+    if (!isRecoverableSessionError(error)) throw error;
+    await gameDb.prepare("DELETE FROM forge_game_states WHERE account_user_id = ?").bind(accountUserId).run();
+  }
   try { return await createForgeSession(env, accountUserId, createShop()); }
   catch { const retry = await loadForgeSession(env, accountUserId); if (!retry) throw new Error("Failed to initialize forge session"); return retry; }
 };
