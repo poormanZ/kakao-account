@@ -14,9 +14,13 @@ CREATE TABLE IF NOT EXISTS forge_action_logs (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   account_user_id INTEGER NOT NULL,
   action TEXT NOT NULL,
+  action_id TEXT,
   result_json TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_forge_action_logs_user_action
+  ON forge_action_logs(account_user_id, action_id);
 
 CREATE INDEX IF NOT EXISTS idx_forge_action_logs_user_created
   ON forge_action_logs(account_user_id, created_at DESC);
