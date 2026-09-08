@@ -122,7 +122,7 @@ describe("9Grid turn state machine", () => {
     const warriorGenerator = (count: number) => Array.from({ length: count }, () => warrior);
     let state = createInitialState(80, 100);
 
-    for (let turn = 1; turn <= 9 && !state.gameOver; turn += 1) {
+    for (let turn = 1; turn <= 9 && state.maxClearedRound === 0; turn += 1) {
       state = rerollTurnCandidates(startTurn(state, { generateCards: warriorGenerator }), warriorGenerator);
       state = chooseTurnCard(state, "warrior");
       state = placeTurnCard(state, turn - 1);
