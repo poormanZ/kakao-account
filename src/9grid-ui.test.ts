@@ -58,9 +58,25 @@ describe("9Grid UI", () => {
 
     expect(html).toContain("REROLL ALL");
     expect(html).toContain("GAME RESTART");
-    expect(html).toContain("REROLL은 모든 카드를 한 번에 교체합니다");
+    expect(html).toContain("REROLL은 3장의 카드를 한 번에 교체합니다");
     expect(html).not.toContain("REROLL CHECKED");
     expect(html).not.toContain("reroll-check");
     expect(html).not.toContain("rerollSet");
+  });
+
+  it("renders a clearer grouped status layout and candidate phase guidance", async () => {
+    const response = render9GridPage({ id: 7, nickname: "poorman", profile_image_url: null });
+    const html = await response.text();
+
+    expect(html).toContain("RUN PROGRESS");
+    expect(html).toContain("PLAYER STATUS");
+    expect(html).toContain("ENEMY");
+    expect(html).toContain("RUN STATE");
+    expect(html).toContain("SELECT CARD → PLACE ON BOARD");
+    expect(html).toContain("id=\"candidate-phase\"");
+    expect(html).toContain("id=\"candidate-help\"");
+    expect(html).toContain("align-items:start");
+    expect(html).toContain("font-size:23px");
+    expect(html).toContain("font-size:17px");
   });
 });
