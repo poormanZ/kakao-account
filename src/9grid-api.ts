@@ -10,7 +10,7 @@ import {
 
 export type NineGridAction =
   | { type: "start" }
-  | { type: "reroll"; indexes: number[] }
+  | { type: "reroll" }
   | { type: "select"; cardId: string }
   | { type: "place"; boardIndex: number }
   | { type: "combat" };
@@ -33,13 +33,6 @@ const isNonEmptyString = (value: unknown): value is string =>
 const isInteger = (value: unknown): value is number =>
   typeof value === "number" && Number.isInteger(value);
 
-const parseIndexes = (value: unknown): number[] | null => {
-  if (!Array.isArray(value) || value.length === 0 || value.length > 3) return null;
-  if (!value.every(isInteger)) return null;
-  if (!value.every((index) => index >= 0 && index < 3)) return null;
-  return value;
-};
-
 export const parseNineGridAction = (value: unknown): NineGridAction => {
   if (!isRecord(value) || typeof value.type !== "string") {
     throw new Error("Invalid 9Grid action");
@@ -49,11 +42,9 @@ export const parseNineGridAction = (value: unknown): NineGridAction => {
     case "start":
       if (Object.keys(value).length !== 1) throw new Error("Invalid start action");
       return { type: "start" };
-    case "reroll": {
-      const indexes = parseIndexes(value.indexes);
-      if (!indexes) throw new Error("Invalid reroll indexes");
-      return { type: "reroll", indexes };
-    }
+    case "reroll":
+      if (Object.keys(value).length !== 1) throw new Error("Invalid reroll action");
+      return { type: "reroll" };
     case "select":
       if (!isNonEmptyString(value.cardId)) throw new Error("Invalid card id");
       return { type: "select", cardId: value.cardId };
@@ -77,9 +68,9 @@ export const applyNineGridAction = (
 ): GameState => {
   switch (action.type) {
     case "start":
-      return startTurn(state, { generateCards });
+      return startTurn(createInitialState(), { generateCards });
     case "reroll":
-      return rerollTurnCandidates(state, action.indexes, generateCards);
+      return rerollTurnCandidates(state, generateCards);
     case "select":
       return chooseTurnCard(state, action.cardId);
     case "place":
@@ -111,3 +102,42 @@ export const createDefaultCardGenerator = (): CardGenerator => (count: number): 
     job: JOBS[randomIndex(JOBS.length)],
   }));
 };
+
+function createInitialState(): GameState {
+  return {
+    ...stateDefaults(),
+  };
+}
+
+function stateDefaults(): GameState {
+  return requireInitialState();
+}
+
+function requireInitialState(): GameState {
+  const initial = createStateForRestart();
+  return initial;
+}
+
+function createStateForRestart(): GameState {
+  return createGameState();
+}
+
+function createGameState(): GameState {
+  return {
+    board: Array(9).fill(null),
+    playerStats: { attack: 1, defense: 1, maxHp: 100, mana: 0 },
+    round: {
+      round: 1,
+      turn: 1,
+      playerHp: 100,
+      playerMaxHp: 100,
+      monsterHp: 100,
+      monsterMaxHp: 100,
+      phase: "reroll",
+      candidates: { cards: [], rerollsUsed: 0, selectedCardId: null },
+    },
+    maxClearedRound: 0,
+    lastRoundClearTurn: 0,
+    gameOver: false,
+  };
+}
