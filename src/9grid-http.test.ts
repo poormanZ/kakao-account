@@ -82,7 +82,7 @@ describe("9Grid HTTP session", () => {
       body: JSON.stringify({ actionId, type: "start" }),
     });
     const first = await handleNineGridSession(makeRequest(), env, 7, "action");
-    const firstBody = await first.json();
+    const firstBody = await first.json() as { state: ReturnType<typeof createInitialState>; monsterAttack: number; actionId: string; version: number };
     const version = db.getVersion();
     const replay = await handleNineGridSession(makeRequest(), env, 7, "action");
     expect(replay.status).toBe(200);
