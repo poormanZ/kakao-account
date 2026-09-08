@@ -33,13 +33,16 @@ describe("9Grid UI", () => {
     expect(html).toContain("MAGE LV");
   });
 
-  it("shows card placement stat gains instead of combat stat values", async () => {
+  it("shows job-specific card placement stat gains", async () => {
     const response = render9GridPage({ id: 7, nickname: "poorman", profile_image_url: null });
     const html = await response.text();
 
-    expect(html).toContain("const placementStats={warrior:[2,0],tank:[0,2],healer:[0,0],mage:[0,0]}");
-    expect(html).toContain('atkValue.textContent="+"+values[0]');
-    expect(html).toContain('defValue.textContent="+"+values[1]');
+    expect(html).toContain('warrior:[["⚔ ATK",2],["◈ DEF",0]]');
+    expect(html).toContain('tank:[["⚔ ATK",0],["◈ DEF",2]]');
+    expect(html).toContain('healer:[["♥ HP",6],["◈ DEF",0]]');
+    expect(html).toContain('mage:[["◆ MANA",1],["⚔ ATK",0]]');
+    expect(html).toContain('firstValue.textContent="+"+values[0][1]');
+    expect(html).toContain('secondValue.textContent="+"+values[1][1]');
     expect(html).not.toContain("const jobStats={warrior:[3,1],tank:[1,3],healer:[1,1],mage:[2,1]}");
   });
 

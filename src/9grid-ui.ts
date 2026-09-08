@@ -147,7 +147,12 @@ let monsterAttack=null;
 const $=(id)=>document.getElementById(id);
 const raceIcons={goblin:"👹",elf:"🧝",dwarf:"⛏",dragon:"🐉"};
 const jobIcons={warrior:"⚔",tank:"🛡",healer:"✚",mage:"✦"};
-const placementStats={warrior:[2,0],tank:[0,2],healer:[0,0],mage:[0,0]};
+const placementStats={
+  warrior:[["⚔ ATK",2],["◈ DEF",0]],
+  tank:[["⚔ ATK",0],["◈ DEF",2]],
+  healer:[["♥ HP",6],["◈ DEF",0]],
+  mage:[["◆ MANA",1],["⚔ ATK",0]],
+};
 function log(text,cls=""){
   const p=document.createElement("div");
   p.className=cls;
@@ -258,10 +263,10 @@ function renderCards(){
     const name=document.createElement("div");name.className="card-name";name.textContent=card.race.toUpperCase();
     const job=document.createElement("div");job.className="card-job";job.textContent=jobIcons[card.job]+" "+card.job.toUpperCase();
     const stats=document.createElement("div");stats.className="card-stats";
-    const values=placementStats[card.job]||[0,0];
-    const atk=document.createElement("div");atk.className="card-stat";atk.textContent="⚔ ATK";const atkValue=document.createElement("strong");atkValue.textContent="+"+values[0];atk.appendChild(atkValue);
-    const def=document.createElement("div");def.className="card-stat";def.textContent="◈ DEF";const defValue=document.createElement("strong");defValue.textContent="+"+values[1];def.appendChild(defValue);
-    stats.append(atk,def);
+    const values=placementStats[card.job]||[["⚔ ATK",0],["◈ DEF",0]];
+    const first=document.createElement("div");first.className="card-stat";first.textContent=values[0][0];const firstValue=document.createElement("strong");firstValue.textContent="+"+values[0][1];first.appendChild(firstValue);
+    const second=document.createElement("div");second.className="card-stat";second.textContent=values[1][0];const secondValue=document.createElement("strong");secondValue.textContent="+"+values[1][1];second.appendChild(secondValue);
+    stats.append(first,second);
     button.append(number,icon,name,job,stats);
     button.disabled=state.round.phase!=="select";
     button.addEventListener("click",()=>selectCard(card.id));
