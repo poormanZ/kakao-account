@@ -75,13 +75,8 @@ export const applyNineGridAction = (
       return chooseTurnCard(state, action.cardId);
     case "place":
       return placeTurnCard(state, action.boardIndex);
-    case "combat": {
-      const combatState = resolveTurnCombat(state, { monsterAttack });
-      if (combatState.gameOver || combatState.round.phase !== "reroll") {
-        return combatState;
-      }
-      return startTurn(combatState, { generateCards });
-    }
+    case "combat":
+      return resolveTurnCombat(state, { monsterAttack });
   }
 };
 
