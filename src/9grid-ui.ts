@@ -147,7 +147,7 @@ let monsterAttack=null;
 const $=(id)=>document.getElementById(id);
 const raceIcons={goblin:"👹",elf:"🧝",dwarf:"⛏",dragon:"🐉"};
 const jobIcons={warrior:"⚔",tank:"🛡",healer:"✚",mage:"✦"};
-const jobStats={warrior:[3,1],tank:[1,3],healer:[1,1],mage:[2,1]};
+const placementStats={warrior:[2,0],tank:[0,2],healer:[0,0],mage:[0,0]};
 function log(text,cls=""){
   const p=document.createElement("div");
   p.className=cls;
@@ -258,9 +258,9 @@ function renderCards(){
     const name=document.createElement("div");name.className="card-name";name.textContent=card.race.toUpperCase();
     const job=document.createElement("div");job.className="card-job";job.textContent=jobIcons[card.job]+" "+card.job.toUpperCase();
     const stats=document.createElement("div");stats.className="card-stats";
-    const values=jobStats[card.job]||[1,1];
-    const atk=document.createElement("div");atk.className="card-stat";atk.textContent="⚔ ATK";const atkValue=document.createElement("strong");atkValue.textContent=String(values[0]);atk.appendChild(atkValue);
-    const def=document.createElement("div");def.className="card-stat";def.textContent="◈ DEF";const defValue=document.createElement("strong");defValue.textContent=String(values[1]);def.appendChild(defValue);
+    const values=placementStats[card.job]||[0,0];
+    const atk=document.createElement("div");atk.className="card-stat";atk.textContent="⚔ ATK";const atkValue=document.createElement("strong");atkValue.textContent="+"+values[0];atk.appendChild(atkValue);
+    const def=document.createElement("div");def.className="card-stat";def.textContent="◈ DEF";const defValue=document.createElement("strong");defValue.textContent="+"+values[1];def.appendChild(defValue);
     stats.append(atk,def);
     button.append(number,icon,name,job,stats);
     button.disabled=state.round.phase!=="select";

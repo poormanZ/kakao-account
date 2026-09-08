@@ -33,6 +33,16 @@ describe("9Grid UI", () => {
     expect(html).toContain("MAGE LV");
   });
 
+  it("shows card placement stat gains instead of combat stat values", async () => {
+    const response = render9GridPage({ id: 7, nickname: "poorman", profile_image_url: null });
+    const html = await response.text();
+
+    expect(html).toContain("const placementStats={warrior:[2,0],tank:[0,2],healer:[0,0],mage:[0,0]}");
+    expect(html).toContain('atkValue.textContent="+"+values[0]');
+    expect(html).toContain('defValue.textContent="+"+values[1]');
+    expect(html).not.toContain("const jobStats={warrior:[3,1],tank:[1,3],healer:[1,1],mage:[2,1]}");
+  });
+
   it("renders concise race, job, and synergy effect descriptions", async () => {
     const response = render9GridPage({ id: 7, nickname: "poorman", profile_image_url: null });
     const html = await response.text();
