@@ -6,9 +6,13 @@ import { create9GridSession, isGameState, load9GridSession, load9GridSessionReco
 export interface NineGridHttpEnv extends NineGridSessionEnv { NINEGRID_MONSTER_ATTACK?: string; }
 export type NineGridSessionRoute = "session" | "action";
 
-const json = (data: unknown, status = 200): Response => Response.json(data, {
+const json = (data: unknown, status = 200, serverTiming?: string): Response => Response.json(data, {
   status,
-  headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" },
+  headers: {
+    "Cache-Control": "no-store",
+    "X-Content-Type-Options": "nosniff",
+    ...(serverTiming ? { "Server-Timing": serverTiming } : {}),
+  },
 });
 const parseBody = async (request: Request): Promise<unknown | null> => {
   const contentType = request.headers.get("Content-Type")?.split(";", 1)[0].trim().toLowerCase();
@@ -37,14 +41,18 @@ const parseStoredResponse = (value: string): { state: GameState; monsterAttack: 
     return { state: parsed.state, monsterAttack: parsed.monsterAttack };
   } catch { return null; }
 };
+const elapsedMilliseconds = (start: number): number => Math.max(0, performance.now() - start);
+const formatServerTiming = (sessionLoad: number, transition: number, sessionSave: number, total: number): string =>
+  `session_load;dur=${sessionLoad.toFixed(1)},transition;dur=${transition.toFixed(1)},session_save;dur=${sessionSave.toFixed(1)},total;dur=${total.toFixed(1)}`;
 
 export const handleNineGridSession = async (request: Request, env: NineGridHttpEnv, userId: number, route: NineGridSessionRoute): Promise<Response> => {
   if (!Number.isInteger(userId) || userId <= 0) return json({ error: "Unauthorized" }, 401);
   if (route === "session") {
     if (request.method !== "GET") return json({ error: "Method not allowed" }, 405);
     try {
+      const started = performance.now();
       const state = await load9GridSession(env, userId);
-      return json({ state, monsterAttack: getMonsterAttack(env, state?.round.round ?? 1) });
+      return json({ state, monsterAttack: getMonsterAttack(env, state?.round.round ?? 1) }, 200, `session_load;dur=${elapsedMilliseconds(started).toFixed(1)}`);
     } catch { return json({ error: "9Grid session unavailable" }, 503); }
   }
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -62,22 +70,32 @@ export const handleNineGridSession = async (request: Request, env: NineGridHttpE
     return json({ error: "Invalid 9Grid action" }, 400);
   }
 
+  const totalStarted = performance.now();
   try {
+    const sessionLoadStarted = performance.now();
     const stored = await load9GridSessionRecord(env, userId);
+    const sessionLoad = elapsedMilliseconds(sessionLoadStarted);
     if (stored?.lastActionId === actionId && stored.lastActionResponseJson !== null) {
       const replay = parseStoredResponse(stored.lastActionResponseJson);
-      if (replay !== null) return json({ ...replay, actionId, version: stored.version });
+      if (replay !== null) {
+        return json({ ...replay, actionId, version: stored.version }, 200, `session_load;dur=${sessionLoad.toFixed(1)},replay;dur=${elapsedMilliseconds(totalStarted).toFixed(1)}`);
+      }
       return json({ error: "9Grid session unavailable" }, 503);
     }
     if (stored === null && action.type !== "start") return json({ error: "9Grid session not found" }, 404);
     const state = stored?.state ?? createInitialState();
+    const transitionStarted = performance.now();
     const nextState = applyAction(state, action, env);
+    const transition = elapsedMilliseconds(transitionStarted);
     const responseBody = { state: nextState, monsterAttack: getMonsterAttack(env, nextState.round.round) };
     const responseJson = JSON.stringify(responseBody);
+    const sessionSaveStarted = performance.now();
     const saved = stored === null
       ? await create9GridSession(env, userId, nextState, actionId, responseJson)
       : await update9GridSession(env, userId, nextState, stored.version, actionId, responseJson);
-    return json({ ...responseBody, actionId, version: saved.version });
+    const sessionSave = elapsedMilliseconds(sessionSaveStarted);
+    const total = elapsedMilliseconds(totalStarted);
+    return json({ ...responseBody, actionId, version: saved.version }, 200, formatServerTiming(sessionLoad, transition, sessionSave, total));
   } catch (error) {
     if (error instanceof NineGridSessionConflictError) return json({ error: "9Grid session changed; retry the action" }, 409);
     if (error instanceof Error && error.message.startsWith("Invalid ")) return json({ error: "Invalid 9Grid state transition" }, 400);
