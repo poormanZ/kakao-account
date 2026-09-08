@@ -1,4 +1,4 @@
-import type { Card, GameState, Job, Race } from "./9grid";
+import { createInitialState, type Card, type GameState, type Job, type Race } from "./9grid";
 import {
   chooseTurnCard,
   placeTurnCard,
@@ -102,42 +102,3 @@ export const createDefaultCardGenerator = (): CardGenerator => (count: number): 
     job: JOBS[randomIndex(JOBS.length)],
   }));
 };
-
-function createInitialState(): GameState {
-  return {
-    ...stateDefaults(),
-  };
-}
-
-function stateDefaults(): GameState {
-  return requireInitialState();
-}
-
-function requireInitialState(): GameState {
-  const initial = createStateForRestart();
-  return initial;
-}
-
-function createStateForRestart(): GameState {
-  return createGameState();
-}
-
-function createGameState(): GameState {
-  return {
-    board: Array(9).fill(null),
-    playerStats: { attack: 1, defense: 1, maxHp: 100, mana: 0 },
-    round: {
-      round: 1,
-      turn: 1,
-      playerHp: 100,
-      playerMaxHp: 100,
-      monsterHp: 100,
-      monsterMaxHp: 100,
-      phase: "reroll",
-      candidates: { cards: [], rerollsUsed: 0, selectedCardId: null },
-    },
-    maxClearedRound: 0,
-    lastRoundClearTurn: 0,
-    gameOver: false,
-  };
-}
