@@ -33,6 +33,11 @@ const isNonEmptyString = (value: unknown): value is string =>
 const isInteger = (value: unknown): value is number =>
   typeof value === "number" && Number.isInteger(value);
 
+export const parseNineGridActionId = (value: unknown): string => {
+  if (!isNonEmptyString(value) || value.length < 16) throw new Error("Invalid action id");
+  return value;
+};
+
 export const parseNineGridAction = (value: unknown): NineGridAction => {
   if (!isRecord(value) || typeof value.type !== "string") {
     throw new Error("Invalid 9Grid action");
@@ -47,11 +52,13 @@ export const parseNineGridAction = (value: unknown): NineGridAction => {
       return { type: "reroll" };
     case "select":
       if (!isNonEmptyString(value.cardId)) throw new Error("Invalid card id");
+      if (Object.keys(value).length !== 2) throw new Error("Invalid select action");
       return { type: "select", cardId: value.cardId };
     case "place":
       if (!isInteger(value.boardIndex) || value.boardIndex < 0 || value.boardIndex >= BOARD_SIZE) {
         throw new Error("Invalid board index");
       }
+      if (Object.keys(value).length !== 2) throw new Error("Invalid place action");
       return { type: "place", boardIndex: value.boardIndex };
     case "combat":
       if (Object.keys(value).length !== 1) throw new Error("Invalid combat action");
