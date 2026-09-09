@@ -5,6 +5,8 @@ import { get9GridBestScore, get9GridMyRank, get9GridRanking, save9GridScore } fr
 import { renderPortalPage } from "./portal-ui";
 import { renderForgePage } from "./forge-ui";
 import { getForgeSession, handleForgeAction } from "./forge-api";
+import { renderEscapeRoomPage } from "./escape-room-ui";
+import { handleEscapeRoomAnswer } from "./escape-room-api";
 import { logError, logInfo, logWarn } from "./logger";
 
 export interface Env {
@@ -15,6 +17,7 @@ export interface Env {
   KAKAO_REST_API_KEY?: string;
   KAKAO_CLIENT_SECRET?: string;
   NINEGRID_MONSTER_ATTACK?: string;
+  ESCAPE_PRIME_KEY?: string;
 }
 
 const SESSION_COOKIE = "kakao_account_session";
@@ -137,6 +140,16 @@ const worker = {
       let user: UserRow | null = null;
       try { user = await getAuthenticatedUser(request, env.DB, SESSION_COOKIE); } catch (error) { logError("forge.page_user_lookup_failed", error, context); }
       return renderForgePage(user);
+    }
+
+    if (request.method === "GET" && url.pathname === "/escape-room") {
+      let user: UserRow | null = null;
+      try { user = await getAuthenticatedUser(request, env.DB, SESSION_COOKIE); } catch (error) { logError("escape_room.user_lookup_failed", error, context); }
+      return renderEscapeRoomPage(user);
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/games/escape-room/answer") {
+      return handleEscapeRoomAnswer(request, env);
     }
 
     if (url.pathname.startsWith("/api/games/9grid")) {
