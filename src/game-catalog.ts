@@ -21,6 +21,15 @@ export const GAME_CATALOG: GameCatalogItem[] = [
     ranking_enabled: false,
   },
   {
+    slug: "escape-room",
+    name: "ESCAPE ROOM",
+    description: "단서를 관찰하고 숨겨진 규칙을 찾아 방을 탈출하세요. 정답 검증은 게임 서버에서 처리됩니다.",
+    icon: "⌗",
+    status: "active",
+    sort_order: 3,
+    ranking_enabled: false,
+  },
+  {
     slug: "9grid",
     name: "9Grid",
     description: "3×3 보드에 카드를 배치하고 시너지를 만들어 몬스터를 처치하세요.",
