@@ -17,7 +17,6 @@ export interface Env {
   KAKAO_REST_API_KEY?: string;
   KAKAO_CLIENT_SECRET?: string;
   NINEGRID_MONSTER_ATTACK?: string;
-  ESCAPE_PRIME_KEY?: string;
 }
 
 const SESSION_COOKIE = "kakao_account_session";
