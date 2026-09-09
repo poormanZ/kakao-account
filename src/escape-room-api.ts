@@ -4,6 +4,8 @@ const normalizeKey = (value: unknown): string => (
   typeof value === "string" ? value.trim().toUpperCase() : ""
 );
 
+type EscapeRoomEnv = Env & { ESCAPE_ROOM_KEY_1_1?: string };
+
 export const handleEscapeRoomAnswer = async (
   request: Request,
   env: Env,
@@ -13,7 +15,8 @@ export const handleEscapeRoomAnswer = async (
     return Response.json({ error: "JSON body required" }, { status: 415 });
   }
 
-  if (!env.ESCAPE_PRIME_KEY) {
+  const escapeRoomEnv = env as EscapeRoomEnv;
+  if (!escapeRoomEnv.ESCAPE_ROOM_KEY_1_1) {
     return Response.json({ error: "Escape Room is not configured" }, { status: 503 });
   }
 
@@ -33,7 +36,7 @@ export const handleEscapeRoomAnswer = async (
     return Response.json({ error: "Invalid answer" }, { status: 400 });
   }
 
-  const expected = normalizeKey(env.ESCAPE_PRIME_KEY);
+  const expected = normalizeKey(escapeRoomEnv.ESCAPE_ROOM_KEY_1_1);
   if (answer !== expected) {
     return Response.json({ correct: false, message: "ACCESS DENIED" }, { status: 200 });
   }

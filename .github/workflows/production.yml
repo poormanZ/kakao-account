@@ -20,7 +20,7 @@ jobs:
       PRODUCTION_GAME_D1_DATABASE_ID: ${{ secrets.PRODUCTION_GAME_D1_DATABASE_ID }}
       PRODUCTION_KAKAO_REST_API_KEY: ${{ secrets.PRODUCTION_KAKAO_REST_API_KEY }}
       PRODUCTION_KAKAO_CLIENT_SECRET: ${{ secrets.PRODUCTION_KAKAO_CLIENT_SECRET }}
-      PRODUCTION_ESCAPE_PRIME_KEY: ${{ secrets.PRODUCTION_ESCAPE_PRIME_KEY }}
+      PRODUCTION_ESCAPE_ROOM_KEY_1_1: ${{ secrets.PRODUCTION_ESCAPE_ROOM_KEY_1_1 }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -46,12 +46,12 @@ jobs:
           : "${PRODUCTION_GAME_D1_DATABASE_ID:?PRODUCTION_GAME_D1_DATABASE_ID secret is required}"
           : "${PRODUCTION_KAKAO_REST_API_KEY:?PRODUCTION_KAKAO_REST_API_KEY secret is required}"
           : "${PRODUCTION_KAKAO_CLIENT_SECRET:?PRODUCTION_KAKAO_CLIENT_SECRET secret is required}"
-          : "${PRODUCTION_ESCAPE_PRIME_KEY:?PRODUCTION_ESCAPE_PRIME_KEY secret is required}"
+          : "${PRODUCTION_ESCAPE_ROOM_KEY_1_1:?PRODUCTION_ESCAPE_ROOM_KEY_1_1 secret is required}"
       - name: Generate production secret file
         shell: bash
         run: |
           set -euo pipefail
-          node -e 'process.stdout.write(JSON.stringify({KAKAO_REST_API_KEY: process.env.PRODUCTION_KAKAO_REST_API_KEY, KAKAO_CLIENT_SECRET: process.env.PRODUCTION_KAKAO_CLIENT_SECRET, ESCAPE_PRIME_KEY: process.env.PRODUCTION_ESCAPE_PRIME_KEY}))' > production-secrets.json
+          node -e 'process.stdout.write(JSON.stringify({KAKAO_REST_API_KEY: process.env.PRODUCTION_KAKAO_REST_API_KEY, KAKAO_CLIENT_SECRET: process.env.PRODUCTION_KAKAO_CLIENT_SECRET, ESCAPE_ROOM_KEY_1_1: process.env.PRODUCTION_ESCAPE_ROOM_KEY_1_1}))' > production-secrets.json
           echo "Production secret file generated without printing secret values."
       - name: Generate bootstrap Wrangler config
         shell: bash
