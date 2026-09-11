@@ -22,7 +22,21 @@
 ## 2. 전체 진행
 
 ```text
-이세계 도착
+현실의 퇴근
+   ↓
+막차 7919번 버스 탑승
+   ↓
+잠이 듦
+   ↓
+벌레 울음 소리에 깨어남
+   ↓
+불이 꺼진 버스 / 사라진 기사
+   ↓
+처음 보는 마을 도착
+   ↓
+마을 회관 진입
+   ↓
+PHASE 0 — 프롤로그
    ↓
 문제 1 — 노트북 로그인
    ├─ 카드 A: 색상 문장 → 아이디 PRIME
@@ -65,11 +79,237 @@
 
 ---
 
-## 3. PHASE 0 — 이세계 도착
+## 3. PHASE 0 — 이세계 도착 / 프롤로그
 
-플레이어는 자신이 어떻게 이곳에 왔는지 기억하지 못한다. 익숙한 물건과 낯선 물건이 섞인 공간이며, 처음부터 PRIME이라는 단어를 설명하지 않는다.
+### 3.1 프롤로그 목적
 
-숫자를 관찰하고 조합하는 과정에서 세계의 규칙을 스스로 발견하게 한다.
+게임 시작 직후 플레이어에게 퍼즐을 제공하기 전에 **현실에서 이세계로 이동하는 사건**을 짧은 영상과 텍스트로 보여준다.
+
+프롤로그에서는 `PRIME`, `소수`, `숫자의 규칙` 등의 정보를 직접 설명하지 않는다. 플레이어가 평범한 퇴근길에서 비정상적인 상황으로 넘어왔다는 감각만 전달한다.
+
+핵심 감정 흐름은 다음과 같다.
+
+```text
+평범한 퇴근
+   ↓
+갑작스러운 서비스 장애
+   ↓
+지친 상태로 막차 탑승
+   ↓
+잠깐의 수면
+   ↓
+이상한 정적
+   ↓
+벌레 울음 소리
+   ↓
+불이 꺼진 버스
+   ↓
+사라진 운전기사
+   ↓
+처음 보는 마을
+   ↓
+불이 켜진 빈 마을 회관
+   ↓
+"여기가 어디지?"
+```
+
+### 3.2 프롤로그 스토리
+
+플레이어의 1인칭 또는 3인칭 시점으로 다음 내용을 전달한다.
+
+> 오늘도 평범하게 네이버에서 일을 하고 있었다.
+>
+> 그런데 퇴근을 앞두고 갑작스럽게 서비스 장애가 발생했다.
+>
+> 장애 대응을 하느라 정신없이 시간을 보내고, 겨우 막차를 타고 퇴근할 수 있었다.
+>
+> 항상 타던 **7919번 버스**였다.
+>
+> 너무 피곤했던 탓인지 버스에 올라타자마자 자리에 몸을 맡겼다.
+>
+> 잠깐 눈을 붙인 것뿐이라고 생각했다.
+>
+> 얼마나 시간이 지났을까.
+>
+> 어디선가 들려오는 벌레 울음 소리에 눈을 떴다.
+>
+> 버스 안은 불이 모두 꺼져 있었다.
+>
+> 버스는 멈춰 있었고, 주변에는 아무도 없었다.
+>
+> 운전기사도 보이지 않았다.
+>
+> 피곤함에 잠에 취한 채 종점까지 온 것 같았다.
+>
+> 버스에서 내려 주변을 바라보았다.
+>
+> 그런데 익숙한 풍경이 아니었다.
+>
+> 처음 보는 마을이었다.
+>
+> 정거장 바로 앞에 작은 마을 회관이 보였다.
+>
+> 이상하게도 회관에는 불이 켜져 있었다.
+>
+> 하지만 안에는 아무도 없었다.
+>
+> 나는 잠시 망설이다가 회관 안으로 들어갔다.
+
+### 3.3 프롤로그 연출
+
+권장 영상 길이는 **20~30초** 정도로 짧게 구성한다.
+
+화면은 현실적인 한국의 밤 풍경에서 시작해 점차 이질적인 마을 분위기로 바꾼다.
+
+#### Shot 1 — 늦은 밤의 사무실
+
+- 늦은 밤 사무실
+- 모니터에 서비스 장애 대응 화면이 희미하게 보임
+- 피곤한 직장인이 마지막 업무를 처리함
+- 형광등과 모니터 불빛만 남은 분위기
+
+#### Shot 2 — 막차 탑승
+
+- 밤의 버스 정류장
+- 버스 전면 또는 측면에 `7919`가 보임
+- 급하게 버스에 올라탐
+- 문이 닫히고 버스가 출발
+
+#### Shot 3 — 잠드는 장면
+
+- 버스 좌석에 기대어 눈을 감음
+- 도시의 불빛이 창문 밖으로 흐름
+- 화면이 점차 어두워짐
+- 짧은 시간 경과 느낌
+
+#### Shot 4 — 벌레 울음 / 이상한 정적
+
+- 어두운 버스 내부
+- 갑자기 주변 소리가 줄어듦
+- 벌레 울음 소리가 들림
+- 플레이어가 눈을 뜸
+- 버스 실내등은 모두 꺼져 있음
+
+#### Shot 5 — 빈 버스
+
+- 정차한 버스
+- 운전석에는 아무도 없음
+- 승객도 없음
+- 문이 열리고 바깥의 낯선 풍경이 보임
+
+#### Shot 6 — 처음 보는 마을
+
+- 밤의 낯선 시골 마을
+- 버스 정류장 표지판
+- 바로 앞에 불이 켜진 마을 회관
+- 주변에는 사람이 없음
+- 카메라가 회관을 천천히 바라봄
+
+마지막 화면:
+
+```text
+마을 회관
+불은 켜져 있었다.
+하지만 아무도 없었다.
+```
+
+이후 화면 전환과 함께 실제 게임 플레이가 시작된다.
+
+### 3.4 프롤로그 사운드
+
+영상의 공포감을 과도하게 높이지 않고 **현실적인 불안감**을 만드는 방향으로 구성한다.
+
+- 사무실: 키보드, 알림음, 컴퓨터 팬 소리
+- 버스: 엔진음, 주행음, 차체 진동음
+- 수면: 버스 주행음이 점차 작아짐
+- 깨어남: 갑작스러운 정적 후 벌레 울음
+- 빈 버스: 아주 약한 전기음 또는 바람 소리
+- 마을: 귀뚜라미, 바람, 먼 거리의 자연음
+- 회관: 문 여는 소리와 내부의 미세한 생활 소음
+
+### 3.5 프롤로그 영상 제작 방법
+
+비용과 제작 난이도를 낮추기 위해 **한 편의 긴 영상을 한 번에 생성하기보다 4~6개의 짧은 클립을 각각 생성한 뒤 편집하는 방식**을 권장한다.
+
+```text
+사무실 클립
+   +
+7919 버스 클립
+   +
+버스에서 잠드는 클립
+   +
+어두운 빈 버스 클립
+   +
+낯선 마을 클립
+   +
+불 켜진 빈 회관 클립
+   ↓
+간단한 영상 편집
+   ↓
+20~30초 프롤로그
+```
+
+AI 영상 생성 프롬프트는 모든 장면에서 다음 공통 스타일을 유지한다.
+
+```text
+cinematic Korean mystery thriller,
+realistic live-action style,
+late night,
+moody natural lighting,
+subtle eerie atmosphere,
+slow camera movement,
+realistic Korean urban and rural environments,
+no visible text except requested bus number,
+no subtitles,
+no exaggerated horror,
+consistent main character appearance
+```
+
+#### Shot 1 프롬프트 예시
+
+```text
+A realistic Korean office late at night, a tired software engineer working alone after an unexpected service outage, multiple computer monitors glowing in a dark office, subtle emergency atmosphere, realistic Korean workplace, cinematic mystery thriller, slow handheld camera movement, natural lighting, no horror, no text.
+```
+
+#### Shot 2 프롬프트 예시
+
+```text
+A realistic Korean city bus arriving at a quiet bus stop late at night, bus number 7919 clearly visible on the front display, a tired office worker hurriedly boarding the last bus, wet pavement reflecting street lights, cinematic Korean mystery thriller, realistic live-action, slow camera movement.
+```
+
+#### Shot 3 프롬프트 예시
+
+```text
+Inside a Korean city bus at night, a tired office worker sitting alone by the window and falling asleep, city lights moving outside the window, peaceful but slightly uneasy atmosphere, realistic live-action cinematic style, subtle camera movement.
+```
+
+#### Shot 4 프롬프트 예시
+
+```text
+A completely dark and empty Korean city bus stopped somewhere at night, interior lights turned off, an empty driver's seat, no passengers, faint moonlight entering through the windows, mysterious and unsettling but not horror, realistic live-action cinematic thriller, slow camera push-in.
+```
+
+#### Shot 5 프롬프트 예시
+
+```text
+A tired person stepping out of a stopped bus at night and discovering a completely unfamiliar rural Korean village, empty streets, old houses, faint street lights, subtle fog, realistic Korean countryside, mysterious cinematic thriller, no people, slow wide camera movement.
+```
+
+#### Shot 6 프롬프트 예시
+
+```text
+A small rural Korean village community center at night, warm lights glowing from inside but the building appears completely empty, an abandoned bus stop directly in front, insects and crickets in the darkness, subtle wind, mysterious realistic live-action cinematic thriller, slow camera movement toward the lit building, no people.
+```
+
+### 3.6 프롤로그에서 주의할 점
+
+- `PRIME`이나 `소수`를 영상에 노출하지 않는다.
+- 숫자 `7919`는 현실 세계에서 평범한 버스 번호처럼 보이게 한다.
+- 버스 번호를 지나치게 강조하지 않는다. 이후 스토리에서 다시 의미를 부여할 수 있다.
+- 운전기사가 사라진 이유를 설명하지 않는다.
+- 마을 회관에 사람이 없는 이유도 설명하지 않는다.
+- 회관에 들어가는 순간부터 플레이어가 직접 조사하도록 한다.
+- 공포 장르보다는 **현실에서 조금씩 어긋나는 미스터리**를 우선한다.
 
 ---
 
@@ -86,10 +326,10 @@
 각 단어는 다음 색상으로 표시한다.
 
 ```text
-Open       → 빨간색
-our        → 파란색
-archive    → 초록색
-confirm    → 노란색
+Open        → 빨간색
+our         → 파란색
+archive     → 초록색
+confirm     → 노란색
 performance → 보라색
 ```
 
@@ -658,11 +898,24 @@ DESTINATION : HOME
 7. 문제 2의 `1011 — 내생일`은 이후 세계관의 핵심 단서가 되지만 최초 풀이에서는 숫자 규칙과 분리한다.
 8. 카드와 문서 디자인은 실제 방탈출 인쇄물/디지털 기록처럼 자연스럽게 구성한다.
 9. 정답 검증은 서버에서 수행하고 클라이언트에는 정답 비교 로직을 두지 않는다.
-10. 이후 단계에서 PRIME/NON-PRIME의 의미가 스토리와 직접 연결되도록 한다.
+10. 프롤로그는 설명보다 분위기와 사건 전달에 집중하며, 세계의 숫자 규칙은 이후 퍼즐에서 처음 발견하게 한다.
+11. 이후 단계에서 PRIME/NON-PRIME의 의미가 스토리와 직접 연결되도록 한다.
 
 ---
 
 ## 13. 구현 우선순위
+
+### MVP 0 — 프롤로그
+- [ ] 프롤로그 텍스트 연출
+- [ ] 7919번 막차 버스 장면
+- [ ] 버스 안에서 잠드는 장면
+- [ ] 벌레 울음과 함께 깨어나는 장면
+- [ ] 불이 꺼진 빈 버스 장면
+- [ ] 낯선 마을 및 버스 정류장 장면
+- [ ] 불이 켜진 빈 마을 회관 장면
+- [ ] 20~30초 AI 영상 제작
+- [ ] 프롤로그 배경음/효과음
+- [ ] 프롤로그 종료 후 PHASE 1 연결
 
 ### MVP 1 — 문제 1
 - [x] 문제 1 기획 확정
@@ -728,12 +981,15 @@ FARE = 17
 ## 15. 핵심 테마 연결
 
 ```text
+7919 = 현실에서 이세계로 넘어오는 출발점
 1011 = 이 세계의 규칙을 따르지 않는 인물로 이어지는 단서
 8121 = 이 세계의 규칙을 따르지 않는 버스
 ```
 
-처음에는 `1011`의 의미를 단순한 생일 기록으로 제시하고, 플레이어가 송유라라는 이름을 찾아낸 뒤 다이어리에서 세계의 규칙과 자신의 정체를 확인하게 한다.
+처음에는 `7919`를 플레이어가 평범한 현실의 막차 버스 번호로 받아들이게 한다.
 
-마지막에는 비소수 버스가 실제 탈출구가 되면서, 처음 발견한 `1011`과 마지막 `8121`이 같은 테마로 연결된다.
+이후 `1011`의 의미를 단순한 생일 기록으로 제시하고, 플레이어가 송유라라는 이름을 찾아낸 뒤 다이어리에서 세계의 규칙과 자신의 정체를 확인하게 한다.
+
+마지막에는 비소수 버스가 실제 탈출구가 되면서, 프롤로그의 현실 세계 버스와 후반부의 이세계 버스가 하나의 귀환 서사로 연결된다.
 
 > **세계의 규칙에서 벗어난 존재가 곧 탈출구다.**
