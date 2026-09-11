@@ -2,4 +2,5 @@
 # Never commit real credentials.
 KAKAO_REST_API_KEY=replace-with-kakao-rest-api-key
 KAKAO_CLIENT_SECRET=replace-with-kakao-client-secret
-ESCAPE_ROOM_KEY_1_1=replace-with-escape-room-answer
+# Escape Room 1-1 server secret format: ID|PASSWORD
+ESCAPE_ROOM_KEY_1_1=PRIME|235711
